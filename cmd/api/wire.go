@@ -4,11 +4,9 @@
 package main
 
 import (
-	// Hapus import meilisearch disini
+	// Hapus baris redis dan gorm di sini
 
 	"github.com/google/wire"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	"khalif-stories/internal/config"
 	"khalif-stories/internal/domain"
@@ -18,15 +16,12 @@ import (
 
 )
 
-// Kita perlu mendefinisikan struct App lagi disini atau import dari main (karena package sama 'main', aman)
-// Tapi agar wire bisa generate, struct App harus terlihat.
-
 func InitializeApp() (*App, error) {
 	wire.Build(
 		config.LoadConfig,
 		ProvideDB,
 		ProvideRedis,
-		NewMeiliClientFromConfig, // Panggil wrapper lokal tadi
+		NewMeiliClientFromConfig,
 		ProvideAzureUploader,
 
 		repository.NewStoryRepository,

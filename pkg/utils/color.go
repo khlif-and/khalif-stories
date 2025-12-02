@@ -5,14 +5,15 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
-	"mime/multipart"
+	"io"
 
 	"github.com/generaltso/vibrant"
 
 )
 
-func ExtractDominantColor(file multipart.File) (string, error) {
-	img, _, err := image.Decode(file)
+// ExtractDominantColor sekarang menerima io.Reader (lebih generic)
+func ExtractDominantColor(r io.Reader) (string, error) {
+	img, _, err := image.Decode(r)
 	if err != nil {
 		return "", err
 	}
@@ -23,7 +24,6 @@ func ExtractDominantColor(file multipart.File) (string, error) {
 	}
 
 	swatches := palette.ExtractAwesome()
-
 	var bestSwatch *vibrant.Swatch
 
 	if sw, ok := swatches["Vibrant"]; ok {
@@ -45,7 +45,6 @@ func ExtractDominantColor(file multipart.File) (string, error) {
 		return "#000000", nil
 	}
 
-	r, g, b := bestSwatch.Color.RGB()
-
-	return fmt.Sprintf("#%02x%02x%02x", r, g, b), nil
+	rVal, gVal, bVal := bestSwatch.Color.RGB()
+	return fmt.Sprintf("#%02x%02x%02x", rVal, gVal, bVal), nil
 }
