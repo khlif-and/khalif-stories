@@ -8,7 +8,6 @@ import (
 
 )
 
-// Wrapper function agar Wire hanya melihat function ini, bukan package aslinya
 func NewMeiliClientFromConfig(cfg *config.Config) *meilisearch.Client {
 	return search.NewMeiliClient(cfg.MeiliAddr, cfg.MeiliKey)
 }

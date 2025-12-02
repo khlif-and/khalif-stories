@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"khalif-stories/internal/domain"
+	"khalif-stories/pkg/utils"
 
 )
 
@@ -19,12 +20,7 @@ func NewChapterHandler(u domain.StoryUseCase) *ChapterHandler {
 }
 
 func (h *ChapterHandler) AddSlide(c *gin.Context) {
-	storyIDStr := c.Param("id")
-	storyID, err := strconv.Atoi(storyIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story ID"})
-		return
-	}
+	storyUUID := c.Param("id")
 
 	content := c.PostForm("content")
 	seqStr := c.PostForm("sequence")
@@ -32,15 +28,15 @@ func (h *ChapterHandler) AddSlide(c *gin.Context) {
 
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Slide image is required"})
+		utils.ErrorResponse(c, http.StatusBadRequest, "Slide image is required")
 		return
 	}
 
-	slide, err := h.useCase.AddSlide(uint(storyID), content, sequence, file, header)
+	slide, err := h.useCase.AddSlide(storyUUID, content, sequence, file, header)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": slide})
+	utils.SuccessResponse(c, http.StatusCreated, slide)
 }
