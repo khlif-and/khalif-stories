@@ -4,6 +4,8 @@
 package main
 
 import (
+	// Hapus import meilisearch disini
+
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -16,36 +18,29 @@ import (
 
 )
 
-type App struct {
-	DB             *gorm.DB
-	RDB            *redis.Client
-	StoryHandler   *handler.StoryHandler
-	ChapterHandler *handler.ChapterHandler
-}
-
-func NewApp(db *gorm.DB, rdb *redis.Client, h *handler.StoryHandler, ch *handler.ChapterHandler) *App {
-	return &App{
-		DB:             db,
-		RDB:            rdb,
-		StoryHandler:   h,
-		ChapterHandler: ch,
-	}
-}
+// Kita perlu mendefinisikan struct App lagi disini atau import dari main (karena package sama 'main', aman)
+// Tapi agar wire bisa generate, struct App harus terlihat.
 
 func InitializeApp() (*App, error) {
 	wire.Build(
 		config.LoadConfig,
 		ProvideDB,
 		ProvideRedis,
+		NewMeiliClientFromConfig, // Panggil wrapper lokal tadi
 		ProvideAzureUploader,
 
 		repository.NewStoryRepository,
+		repository.NewCacheRepository,
+		repository.NewSearchRepository,
+		
 		wire.Bind(new(domain.StoryRepository), new(*repository.StoryRepo)),
+		wire.Bind(new(domain.SearchRepository), new(*repository.SearchRepo)),
 
 		usecase.NewStoryUseCase,
 
 		handler.NewStoryHandler,
 		handler.NewChapterHandler,
+		handler.NewSearchHandler,
 
 		NewApp,
 	)
