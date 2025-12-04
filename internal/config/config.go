@@ -1,39 +1,38 @@
 package config
 
 import (
-	"os"
-	"strconv"
+	"log"
 
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 
 )
 
 type Config struct {
-	DBUrl          string
-	RedisAddr      string
-	Port           string
-	JWTSecret      string
-	AzureConnStr   string
-	AzureContainer string
-	SlideLimit     int
+	DBUrl          string `mapstructure:"DATABASE_URL"`
+	RedisAddr      string `mapstructure:"REDIS_ADDR"`
+	Port           string `mapstructure:"PORT"`
+	JWTSecret      string `mapstructure:"JWT_SECRET"`
+	AzureConnStr   string `mapstructure:"AZURE_STORAGE_CONNECTION_STRING"`
+	AzureContainer string `mapstructure:"AZURE_CONTAINER_NAME"`
+	SlideLimit     int    `mapstructure:"SLIDE_LIMIT"`
 }
 
 func LoadConfig() *Config {
-	_ = godotenv.Load()
-	_ = godotenv.Load("../../.env")
+	viper.AddConfigPath(".")
+	viper.AddConfigPath("../..")
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
 
-	limit, _ := strconv.Atoi(os.Getenv("SLIDE_LIMIT"))
-	if limit == 0 {
-		limit = 20
+	viper.AutomaticEnv()
+
+	viper.SetDefault("SLIDE_LIMIT", 20)
+
+	_ = viper.ReadInConfig()
+
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		log.Fatal(err)
 	}
 
-	return &Config{
-		DBUrl:          os.Getenv("DATABASE_URL"),
-		RedisAddr:      os.Getenv("REDIS_ADDR"),
-		Port:           os.Getenv("PORT"),
-		JWTSecret:      os.Getenv("JWT_SECRET"),
-		AzureConnStr:   os.Getenv("AZURE_STORAGE_CONNECTION_STRING"),
-		AzureContainer: os.Getenv("AZURE_CONTAINER_NAME"),
-		SlideLimit:     limit,
-	}
+	return &config
 }
