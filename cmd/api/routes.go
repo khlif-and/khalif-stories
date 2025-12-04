@@ -11,6 +11,8 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
+	r.Use(middleware.Logger())
+
 	limiter := middleware.RateLimitConfig{Limit: 300, Window: time.Minute}
 	r.Use(middleware.RateLimit(app.RDB, limiter))
 

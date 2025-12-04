@@ -2,16 +2,17 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"khalif-stories/internal/config"
 	"khalif-stories/internal/domain"
 	"khalif-stories/internal/handler"
 	"khalif-stories/pkg/database"
+	"khalif-stories/pkg/logger"
 
 )
 
@@ -32,13 +33,15 @@ func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *han
 }
 
 func main() {
+	logger.Init()
+	
 	refreshFlag := flag.Bool("refresh", false, "Reset Database")
 	flag.Parse()
 
 	cfg := config.LoadConfig()
 	app, err := InitializeApp()
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("Failed to initialize app", zap.Error(err))
 	}
 
 	if *refreshFlag {
@@ -47,11 +50,17 @@ func main() {
 
 	app.DB.AutoMigrate(&domain.Category{}, &domain.Story{}, &domain.Slide{})
 	
-	database.SetupDatabaseCapabilities(app.DB)
+	database.RunMigrations(app.DB)
 
 	database.SeedCategories(app.DB)
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	
 	SetupRoutes(r, app, cfg)
-	r.Run(":" + cfg.Port)
+	
+	logger.Info("Server starting", zap.String("port", cfg.Port))
+	if err := r.Run(":" + cfg.Port); err != nil {
+		logger.Fatal("Server start failed", zap.Error(err))
+	}
 }

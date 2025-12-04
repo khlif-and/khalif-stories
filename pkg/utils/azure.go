@@ -22,12 +22,25 @@ func NewAzureUploader(connStr, containerName string) (*AzureUploader, error) {
 	return &AzureUploader{Client: client, ContainerName: containerName}, nil
 }
 
-func (a *AzureUploader) UploadFile(file multipart.File, filename string) (string, error) {
-	return a.UploadToContainer(file, a.ContainerName, filename)
+func (a *AzureUploader) Upload(file multipart.File, header *multipart.FileHeader) (string, error) {
+	return a.UploadToContainer(context.Background(), file, a.ContainerName, header.Filename)
 }
 
-func (a *AzureUploader) UploadToContainer(file multipart.File, containerName, filename string) (string, error) {
-	ctx := context.Background()
+func (a *AzureUploader) Delete(fileURL string) error {
+	parts := strings.Split(fileURL, "/")
+	if len(parts) == 0 {
+		return nil
+	}
+	blobName := parts[len(parts)-1]
+	_, err := a.Client.DeleteBlob(context.Background(), a.ContainerName, blobName, nil)
+	return err
+}
+
+func (a *AzureUploader) UploadFile(ctx context.Context, file multipart.File, filename string) (string, error) {
+	return a.UploadToContainer(ctx, file, a.ContainerName, filename)
+}
+
+func (a *AzureUploader) UploadToContainer(ctx context.Context, file multipart.File, containerName, filename string) (string, error) {
 	_, err := a.Client.UploadStream(ctx, containerName, filename, file, nil)
 	if err != nil {
 		return "", err

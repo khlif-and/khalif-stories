@@ -25,7 +25,7 @@ func InitializeApp() (*App, error) {
 	categoryUseCase := usecase.NewCategoryUseCase(categoryRepo, redisRepo, azureUploader)
 	categoryHandler := handler.NewCategoryHandler(categoryUseCase)
 	storyRepo := repository.NewStoryRepository(db)
-	storyUseCase := usecase.NewStoryUseCase(storyRepo, redisRepo, azureUploader)
+	storyUseCase := usecase.NewStoryUseCase(configConfig, storyRepo, redisRepo, azureUploader)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
 	app := NewApp(db, client, categoryHandler, storyHandler)
 	return app, nil
