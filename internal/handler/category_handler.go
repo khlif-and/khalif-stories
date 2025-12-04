@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,10 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 	file, header, _ := c.Request.FormFile("image")
 	res, err := h.useCase.Create(c.Request.Context(), name, file, header)
 	if err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			utils.ErrorResponse(c, http.StatusConflict, err.Error())
+			return
+		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -37,15 +42,23 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 	ctx := c.Request.Context()
 	id := c.Param("id")
 	name := c.PostForm("name")
-	
+
 	res, err := h.useCase.Update(ctx, id, name, nil, nil)
-	
+
 	file, header, _ := c.Request.FormFile("image")
 	if file != nil {
 		res, err = h.useCase.Update(ctx, id, name, file, header)
 	}
 
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, err.Error())
+			return
+		}
+		if errors.Is(err, domain.ErrConflict) {
+			utils.ErrorResponse(c, http.StatusConflict, err.Error())
+			return
+		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -54,6 +67,10 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 
 func (h *CategoryHandler) Delete(c *gin.Context) {
 	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, err.Error())
+			return
+		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -72,7 +89,11 @@ func (h *CategoryHandler) GetAll(c *gin.Context) {
 func (h *CategoryHandler) GetOne(c *gin.Context) {
 	res, err := h.useCase.Get(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "not found")
+		if errors.Is(err, domain.ErrNotFound) {
+			utils.ErrorResponse(c, http.StatusNotFound, "not found")
+			return
+		}
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, res)

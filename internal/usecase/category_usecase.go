@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"mime/multipart"
 	"time"
 
@@ -28,7 +27,7 @@ func NewCategoryUseCase(repo domain.CategoryRepository, redis domain.RedisReposi
 func (uc *CategoryUC) Create(ctx context.Context, name string, file multipart.File, header *multipart.FileHeader) (*domain.Category, error) {
 	existing, _ := uc.categoryRepo.GetByName(ctx, name)
 	if existing != nil {
-		return nil, errors.New("category name exists")
+		return nil, domain.ErrConflict
 	}
 
 	var imageURL string
@@ -51,14 +50,14 @@ func (uc *CategoryUC) Create(ctx context.Context, name string, file multipart.Fi
 	}
 
 	if uc.redisRepo != nil {
-		_ = uc.redisRepo.DeletePrefix(ctx, "categories:*")
+		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
 	}
 
 	return category, nil
 }
 
 func (uc *CategoryUC) GetAll(ctx context.Context) ([]domain.Category, error) {
-	cacheKey := "categories:all"
+	cacheKey := domain.CacheKeyCategoryAll
 
 	if uc.redisRepo != nil {
 		cachedData, err := uc.redisRepo.Get(ctx, cacheKey)
@@ -85,7 +84,14 @@ func (uc *CategoryUC) GetAll(ctx context.Context) ([]domain.Category, error) {
 }
 
 func (uc *CategoryUC) Get(ctx context.Context, uuid string) (*domain.Category, error) {
-	return uc.categoryRepo.GetByUUID(ctx, uuid)
+	cat, err := uc.categoryRepo.GetByUUID(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	if cat == nil {
+		return nil, domain.ErrNotFound
+	}
+	return cat, nil
 }
 
 func (uc *CategoryUC) Search(ctx context.Context, query string) ([]domain.Category, error) {
@@ -97,11 +103,14 @@ func (uc *CategoryUC) Update(ctx context.Context, uuid string, name string, file
 	if err != nil {
 		return nil, err
 	}
+	if category == nil {
+		return nil, domain.ErrNotFound
+	}
 
 	if name != "" && name != category.Name {
 		existing, _ := uc.categoryRepo.GetByName(ctx, name)
 		if existing != nil && existing.UUID != category.UUID {
-			return nil, errors.New("category name exists")
+			return nil, domain.ErrConflict
 		}
 		category.Name = name
 	}
@@ -123,7 +132,7 @@ func (uc *CategoryUC) Update(ctx context.Context, uuid string, name string, file
 	}
 
 	if uc.redisRepo != nil {
-		_ = uc.redisRepo.DeletePrefix(ctx, "categories:*")
+		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
 	}
 
 	return category, nil
@@ -133,6 +142,9 @@ func (uc *CategoryUC) Delete(ctx context.Context, uuid string) error {
 	category, err := uc.categoryRepo.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
+	}
+	if category == nil {
+		return domain.ErrNotFound
 	}
 
 	if category.ImageURL != "" && uc.storage != nil {
@@ -144,7 +156,7 @@ func (uc *CategoryUC) Delete(ctx context.Context, uuid string) error {
 	}
 
 	if uc.redisRepo != nil {
-		_ = uc.redisRepo.DeletePrefix(ctx, "categories:*")
+		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
 	}
 
 	return nil
