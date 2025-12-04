@@ -11,30 +11,28 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
-	globalLimitConfig := middleware.RateLimitConfig{
-		Limit:  300,
-		Window: time.Minute,
-	}
-	r.Use(middleware.RateLimit(app.RDB, globalLimitConfig))
+	limiter := middleware.RateLimitConfig{Limit: 300, Window: time.Minute}
+	r.Use(middleware.RateLimit(app.RDB, limiter))
 
-	authMiddleware := middleware.AuthMiddleware(cfg.JWTSecret)
-	adminMiddleware := middleware.OnlyAdmin()
+	auth := middleware.AuthMiddleware(cfg.JWTSecret)
+	admin := middleware.OnlyAdmin()
 
-	r.GET("/api/categories", app.StoryHandler.GetCategories)
-	r.GET("/api/categories/:id", app.StoryHandler.GetCategory)
-	r.GET("/api/search/categories", app.SearchHandler.SearchCategories)
-	r.GET("/api/stories", app.StoryHandler.GetAllStories)
+	r.GET("/api/categories", app.CategoryHandler.GetAll)
+	r.GET("/api/categories/:id", app.CategoryHandler.GetOne)
+	r.GET("/api/search/categories", app.CategoryHandler.Search)
 
-	adminGroup := r.Group("/api/admin")
-	adminGroup.Use(authMiddleware, adminMiddleware)
+	r.GET("/api/stories", app.StoryHandler.GetAll)
+	r.GET("/api/search/stories", app.StoryHandler.Search)
+
+	adm := r.Group("/api/admin")
+	adm.Use(auth, admin)
 	{
-		adminGroup.POST("/categories", app.StoryHandler.CreateCategory)
-		adminGroup.PUT("/categories/:id", app.StoryHandler.UpdateCategory)
-		adminGroup.DELETE("/categories/:id", app.StoryHandler.DeleteCategory)
+		adm.POST("/categories", app.CategoryHandler.Create)
+		adm.PUT("/categories/:id", app.CategoryHandler.Update)
+		adm.DELETE("/categories/:id", app.CategoryHandler.Delete)
 
-		adminGroup.POST("/stories", app.StoryHandler.CreateStory)
-		adminGroup.DELETE("/stories/:id", app.StoryHandler.DeleteStory)
-
-		adminGroup.POST("/stories/:id/slides", app.ChapterHandler.AddSlide)
+		adm.POST("/stories", app.StoryHandler.Create)
+		adm.DELETE("/stories/:id", app.StoryHandler.Delete)
+		adm.POST("/stories/:id/slides", app.StoryHandler.AddSlide)
 	}
 }
