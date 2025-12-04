@@ -19,123 +19,60 @@ func NewStoryHandler(u domain.StoryUseCase) *StoryHandler {
 	return &StoryHandler{useCase: u}
 }
 
-func (h *StoryHandler) CreateCategory(c *gin.Context) {
-	name := c.PostForm("name")
-	if name == "" {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Category name is required")
-		return
-	}
-
-	file, header, _ := c.Request.FormFile("image")
-
-	category, err := h.useCase.CreateCategory(name, file, header)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, http.StatusCreated, category)
-}
-
-func (h *StoryHandler) UpdateCategory(c *gin.Context) {
-	id := c.Param("id")
-	name := c.PostForm("name")
-	file, header, _ := c.Request.FormFile("image")
-
-	if name == "" && file == nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "No data to update")
-		return
-	}
-
-	category, err := h.useCase.UpdateCategory(id, name, file, header)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, http.StatusOK, category)
-}
-
-func (h *StoryHandler) DeleteCategory(c *gin.Context) {
-	id := c.Param("id")
-
-	err := h.useCase.DeleteCategory(id)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.SuccessMessage(c, http.StatusOK, "Category and related stories deleted successfully")
-}
-
-func (h *StoryHandler) GetCategories(c *gin.Context) {
-	categories, err := h.useCase.GetAllCategories()
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, http.StatusOK, categories)
-}
-
-func (h *StoryHandler) GetCategory(c *gin.Context) {
-	id := c.Param("id")
-
-	category, err := h.useCase.GetCategory(id)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "Category not found")
-		return
-	}
-
-	utils.SuccessResponse(c, http.StatusOK, category)
-}
-
-func (h *StoryHandler) CreateStory(c *gin.Context) {
-	title := c.PostForm("title")
-	desc := c.PostForm("description")
-	catIDStr := c.PostForm("category_id")
-
-	catID, err := strconv.Atoi(catIDStr)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid category_id")
-		return
-	}
-
+func (h *StoryHandler) Create(c *gin.Context) {
+	catID, _ := strconv.Atoi(c.PostForm("category_id"))
 	file, header, err := c.Request.FormFile("thumbnail")
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Thumbnail image is required")
+		utils.ErrorResponse(c, http.StatusBadRequest, "thumbnail required")
 		return
 	}
-
-	story, err := h.useCase.CreateStory(title, desc, uint(catID), file, header)
+	res, err := h.useCase.Create(c.PostForm("title"), c.PostForm("description"), uint(catID), file, header)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	utils.SuccessResponse(c, http.StatusCreated, story)
+	utils.SuccessResponse(c, http.StatusCreated, res)
 }
 
-func (h *StoryHandler) GetAllStories(c *gin.Context) {
-	pagination := utils.GeneratePaginationFromRequest(c)
-
-	stories, err := h.useCase.GetAllStories(pagination.Page, pagination.Limit, pagination.Sort)
+func (h *StoryHandler) GetAll(c *gin.Context) {
+	p := utils.GeneratePaginationFromRequest(c)
+	res, err := h.useCase.GetAll(p.Page, p.Limit, p.Sort)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	utils.SuccessResponseWithMeta(c, http.StatusOK, stories, pagination)
+	utils.SuccessResponseWithMeta(c, http.StatusOK, res, p)
 }
 
-func (h *StoryHandler) DeleteStory(c *gin.Context) {
-	id := c.Param("id")
-
-	err := h.useCase.DeleteStory(id)
+func (h *StoryHandler) Search(c *gin.Context) {
+	q := c.Query("q")
+	if q == "" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "query required")
+		return
+	}
+	res, err := h.useCase.Search(q)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
+	utils.SuccessResponse(c, http.StatusOK, res)
+}
 
-	utils.SuccessMessage(c, http.StatusOK, "Story deleted successfully")
+func (h *StoryHandler) Delete(c *gin.Context) {
+	if err := h.useCase.Delete(c.Param("id")); err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	utils.SuccessMessage(c, http.StatusOK, "deleted")
+}
+
+func (h *StoryHandler) AddSlide(c *gin.Context) {
+	seq, _ := strconv.Atoi(c.PostForm("sequence"))
+	file, header, _ := c.Request.FormFile("image")
+	res, err := h.useCase.AddSlide(c.Param("id"), c.PostForm("content"), seq, file, header)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	utils.SuccessResponse(c, http.StatusCreated, res)
 }

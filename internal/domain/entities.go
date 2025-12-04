@@ -9,7 +9,7 @@ import (
 type Category struct {
 	ID            uint      `gorm:"primaryKey" json:"-"`
 	UUID          string    `gorm:"type:uuid;uniqueIndex" json:"id"`
-	Name          string    `json:"name"`
+	Name          string    `gorm:"index" json:"name"`
 	ImageURL      string    `json:"image_url"`
 	DominantColor string    `json:"dominant_color"`
 	Stories       []Story   `gorm:"foreignKey:CategoryID" json:"stories,omitempty"`
@@ -20,66 +20,66 @@ type Category struct {
 type Story struct {
 	ID            uint      `gorm:"primaryKey" json:"-"`
 	UUID          string    `gorm:"type:uuid;uniqueIndex" json:"id"`
-	Title         string    `json:"title"`
+	Title         string    `gorm:"index" json:"title"`
 	Description   string    `json:"description"`
 	ThumbnailURL  string    `json:"thumbnail_url"`
 	DominantColor string    `json:"dominant_color"`
-	CategoryID    uint      `json:"category_id"`
+	CategoryID    uint      `gorm:"index" json:"category_id"`
 	Category      Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Slides        []Slide   `gorm:"foreignKey:StoryID" json:"slides,omitempty"`
-	Status        string    `json:"status"`
-	CreatedAt     time.Time `json:"created_at"`
+	SlideCount    int       `gorm:"default:0" json:"slide_count"`
+	Status        string    `gorm:"index;default:'Draft'" json:"status"`
+	CreatedAt     time.Time `gorm:"index" json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type Slide struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	StoryID   uint      `json:"story_id"`
+	StoryID   uint      `gorm:"index" json:"story_id"`
 	ImageURL  string    `json:"image_url"`
 	Content   string    `json:"content"`
-	Sequence  int       `json:"sequence"`
+	Sequence  int       `gorm:"index" json:"sequence"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type SearchRepository interface {
-	IndexCategory(category *Category) error
-	SearchCategories(query string) ([]Category, error)
-	DeleteCategoryIndex(uuid string) error
+type CategoryRepository interface {
+	Create(category *Category) error
+	GetByName(name string) (*Category, error)
+	GetByUUID(uuid string) (*Category, error)
+	GetAll() ([]Category, error)
+	Search(query string) ([]Category, error)
+	Update(category *Category) error
+	Delete(uuid string) error
+	UpdateColor(id uint, color string) error
 }
 
 type StoryRepository interface {
-	CreateCategory(category *Category) error
-	GetCategoryByName(name string) (*Category, error)
-	GetCategoryByUUID(uuid string) (*Category, error)
-	GetAllCategories() ([]Category, error)
-	UpdateCategory(category *Category) error
-	DeleteCategory(uuid string) error
-	UpdateCategoryColor(id uint, color string) error
-
-	CreateStory(story *Story) error
-	GetStoryByID(id uint) (*Story, error)
-	GetStoryByUUID(uuid string) (*Story, error)
-	GetAllStories(page, limit int, sort string) ([]Story, error)
-	DeleteStory(uuid string) error
-	UpdateStory(story *Story) error
-	UpdateStoryColor(id uint, color string) error
-
+	Create(story *Story) error
+	GetByID(id uint) (*Story, error)
+	GetByUUID(uuid string) (*Story, error)
+	GetAll(page, limit int, sort string) ([]Story, error)
+	Search(query string) ([]Story, error)
+	Update(story *Story) error
+	Delete(uuid string) error
+	UpdateColor(id uint, color string) error
 	CreateSlide(slide *Slide) error
 	CountSlides(storyID uint) (int64, error)
 }
 
+type CategoryUseCase interface {
+	Create(name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
+	GetAll() ([]Category, error)
+	Get(uuid string) (*Category, error)
+	Search(query string) ([]Category, error)
+	Update(uuid string, name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
+	Delete(uuid string) error
+}
+
 type StoryUseCase interface {
-	CreateCategory(name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
-	GetAllCategories() ([]Category, error)
-	GetCategory(uuid string) (*Category, error)
-	UpdateCategory(uuid string, name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
-	DeleteCategory(uuid string) error
-	SearchCategories(query string) ([]Category, error)
-
-	CreateStory(title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*Story, error)
-	GetAllStories(page, limit int, sort string) ([]Story, error)
-	DeleteStory(uuid string) error
-
+	Create(title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*Story, error)
+	GetAll(page, limit int, sort string) ([]Story, error)
+	Search(query string) (*[]Story, error)
+	Delete(uuid string) error
 	AddSlide(storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
 }

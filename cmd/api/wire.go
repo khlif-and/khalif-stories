@@ -4,8 +4,6 @@
 package main
 
 import (
-	// Hapus baris redis dan gorm di sini
-
 	"github.com/google/wire"
 
 	"khalif-stories/internal/config"
@@ -21,21 +19,23 @@ func InitializeApp() (*App, error) {
 		config.LoadConfig,
 		ProvideDB,
 		ProvideRedis,
-		NewMeiliClientFromConfig,
 		ProvideAzureUploader,
 
+		// Repository (Perlu Bind karena return-nya struct pointer)
+		repository.NewCategoryRepository,
 		repository.NewStoryRepository,
 		repository.NewCacheRepository,
-		repository.NewSearchRepository,
-		
-		wire.Bind(new(domain.StoryRepository), new(*repository.StoryRepo)),
-		wire.Bind(new(domain.SearchRepository), new(*repository.SearchRepo)),
 
+		wire.Bind(new(domain.CategoryRepository), new(*repository.CategoryRepo)),
+		wire.Bind(new(domain.StoryRepository), new(*repository.StoryRepo)),
+
+		// UseCase (TIDAK PERLU Bind karena return-nya sudah interface)
+		usecase.NewCategoryUseCase,
 		usecase.NewStoryUseCase,
 
+		// Handler
+		handler.NewCategoryHandler,
 		handler.NewStoryHandler,
-		handler.NewChapterHandler,
-		handler.NewSearchHandler,
 
 		NewApp,
 	)
