@@ -14,8 +14,6 @@ type Config struct {
 	JWTSecret      string
 	AzureConnStr   string
 	AzureContainer string
-	MeiliAddr      string
-	MeiliKey       string
 }
 
 func LoadConfig() *Config {
@@ -29,7 +27,5 @@ func LoadConfig() *Config {
 		JWTSecret:      os.Getenv("JWT_SECRET"),
 		AzureConnStr:   os.Getenv("AZURE_STORAGE_CONNECTION_STRING"),
 		AzureContainer: os.Getenv("AZURE_CONTAINER_NAME"),
-		MeiliAddr:      os.Getenv("MEILI_ADDR"),
-		MeiliKey:       os.Getenv("MEILI_MASTER_KEY"),
 	}
 }
