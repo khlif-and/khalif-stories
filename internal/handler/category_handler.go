@@ -25,7 +25,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 		return
 	}
 	file, header, _ := c.Request.FormFile("image")
-	res, err := h.useCase.Create(name, file, header)
+	res, err := h.useCase.Create(c.Request.Context(), name, file, header)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -34,11 +34,17 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 }
 
 func (h *CategoryHandler) Update(c *gin.Context) {
-	res, err := h.useCase.Update(c.Param("id"), c.PostForm("name"), nil, nil)
+	ctx := c.Request.Context()
+	id := c.Param("id")
+	name := c.PostForm("name")
+	
+	res, err := h.useCase.Update(ctx, id, name, nil, nil)
+	
 	file, header, _ := c.Request.FormFile("image")
 	if file != nil {
-		res, err = h.useCase.Update(c.Param("id"), c.PostForm("name"), file, header)
+		res, err = h.useCase.Update(ctx, id, name, file, header)
 	}
+
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -47,7 +53,7 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 }
 
 func (h *CategoryHandler) Delete(c *gin.Context) {
-	if err := h.useCase.Delete(c.Param("id")); err != nil {
+	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -55,7 +61,7 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 }
 
 func (h *CategoryHandler) GetAll(c *gin.Context) {
-	res, err := h.useCase.GetAll()
+	res, err := h.useCase.GetAll(c.Request.Context())
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -64,7 +70,7 @@ func (h *CategoryHandler) GetAll(c *gin.Context) {
 }
 
 func (h *CategoryHandler) GetOne(c *gin.Context) {
-	res, err := h.useCase.Get(c.Param("id"))
+	res, err := h.useCase.Get(c.Request.Context(), c.Param("id"))
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "not found")
 		return
@@ -78,7 +84,7 @@ func (h *CategoryHandler) Search(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "query required")
 		return
 	}
-	res, err := h.useCase.Search(q)
+	res, err := h.useCase.Search(c.Request.Context(), q)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

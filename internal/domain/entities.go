@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"mime/multipart"
 	"time"
 
@@ -44,42 +45,54 @@ type Slide struct {
 }
 
 type CategoryRepository interface {
-	Create(category *Category) error
-	GetByName(name string) (*Category, error)
-	GetByUUID(uuid string) (*Category, error)
-	GetAll() ([]Category, error)
-	Search(query string) ([]Category, error)
-	Update(category *Category) error
-	Delete(uuid string) error
-	UpdateColor(id uint, color string) error
+	Create(ctx context.Context, category *Category) error
+	GetByName(ctx context.Context, name string) (*Category, error)
+	GetByUUID(ctx context.Context, uuid string) (*Category, error)
+	GetAll(ctx context.Context) ([]Category, error)
+	Search(ctx context.Context, query string) ([]Category, error)
+	Update(ctx context.Context, category *Category) error
+	Delete(ctx context.Context, uuid string) error
+	UpdateColor(ctx context.Context, id uint, color string) error
 }
 
 type StoryRepository interface {
-	Create(story *Story) error
-	GetByID(id uint) (*Story, error)
-	GetByUUID(uuid string) (*Story, error)
-	GetAll(page, limit int, sort string) ([]Story, error)
-	Search(query string) ([]Story, error)
-	Update(story *Story) error
-	Delete(uuid string) error
-	UpdateColor(id uint, color string) error
-	CreateSlide(slide *Slide) error
-	CountSlides(storyID uint) (int64, error)
+	Create(ctx context.Context, story *Story) error
+	GetByID(ctx context.Context, id uint) (*Story, error)
+	GetByUUID(ctx context.Context, uuid string) (*Story, error)
+	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
+	Search(ctx context.Context, query string) ([]Story, error)
+	Update(ctx context.Context, story *Story) error
+	Delete(ctx context.Context, uuid string) error
+	UpdateColor(ctx context.Context, id uint, color string) error
+	CreateSlide(ctx context.Context, slide *Slide) error
+	CountSlides(ctx context.Context, storyID uint) (int64, error)
+}
+
+type RedisRepository interface {
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, key string) error
+	DeletePrefix(ctx context.Context, prefix string) error
+}
+
+type StorageRepository interface {
+	Upload(file multipart.File, header *multipart.FileHeader) (string, error)
+	Delete(fileURL string) error
 }
 
 type CategoryUseCase interface {
-	Create(name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
-	GetAll() ([]Category, error)
-	Get(uuid string) (*Category, error)
-	Search(query string) ([]Category, error)
-	Update(uuid string, name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
-	Delete(uuid string) error
+	Create(ctx context.Context, name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
+	GetAll(ctx context.Context) ([]Category, error)
+	Get(ctx context.Context, uuid string) (*Category, error)
+	Search(ctx context.Context, query string) ([]Category, error)
+	Update(ctx context.Context, uuid string, name string, file multipart.File, header *multipart.FileHeader) (*Category, error)
+	Delete(ctx context.Context, uuid string) error
 }
 
 type StoryUseCase interface {
-	Create(title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*Story, error)
-	GetAll(page, limit int, sort string) ([]Story, error)
-	Search(query string) (*[]Story, error)
-	Delete(uuid string) error
-	AddSlide(storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
+	Create(ctx context.Context, title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*Story, error)
+	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
+	Search(ctx context.Context, query string) (*[]Story, error)
+	Delete(ctx context.Context, uuid string) error
+	AddSlide(ctx context.Context, storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
 }

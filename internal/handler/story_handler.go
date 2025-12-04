@@ -11,6 +11,12 @@ import (
 
 )
 
+type CreateStoryInput struct {
+	Title       string `form:"title" binding:"required"`
+	Description string `form:"description"`
+	CategoryID  uint   `form:"category_id" binding:"required"`
+}
+
 type StoryHandler struct {
 	useCase domain.StoryUseCase
 }
@@ -20,13 +26,19 @@ func NewStoryHandler(u domain.StoryUseCase) *StoryHandler {
 }
 
 func (h *StoryHandler) Create(c *gin.Context) {
-	catID, _ := strconv.Atoi(c.PostForm("category_id"))
+	var input CreateStoryInput
+	if err := c.ShouldBind(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	file, header, err := c.Request.FormFile("thumbnail")
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "thumbnail required")
 		return
 	}
-	res, err := h.useCase.Create(c.PostForm("title"), c.PostForm("description"), uint(catID), file, header)
+
+	res, err := h.useCase.Create(c.Request.Context(), input.Title, input.Description, input.CategoryID, file, header)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -36,7 +48,7 @@ func (h *StoryHandler) Create(c *gin.Context) {
 
 func (h *StoryHandler) GetAll(c *gin.Context) {
 	p := utils.GeneratePaginationFromRequest(c)
-	res, err := h.useCase.GetAll(p.Page, p.Limit, p.Sort)
+	res, err := h.useCase.GetAll(c.Request.Context(), p.Page, p.Limit, p.Sort)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -50,7 +62,7 @@ func (h *StoryHandler) Search(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusBadRequest, "query required")
 		return
 	}
-	res, err := h.useCase.Search(q)
+	res, err := h.useCase.Search(c.Request.Context(), q)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
@@ -59,7 +71,7 @@ func (h *StoryHandler) Search(c *gin.Context) {
 }
 
 func (h *StoryHandler) Delete(c *gin.Context) {
-	if err := h.useCase.Delete(c.Param("id")); err != nil {
+	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -69,7 +81,7 @@ func (h *StoryHandler) Delete(c *gin.Context) {
 func (h *StoryHandler) AddSlide(c *gin.Context) {
 	seq, _ := strconv.Atoi(c.PostForm("sequence"))
 	file, header, _ := c.Request.FormFile("image")
-	res, err := h.useCase.AddSlide(c.Param("id"), c.PostForm("content"), seq, file, header)
+	res, err := h.useCase.AddSlide(c.Request.Context(), c.Param("id"), c.PostForm("content"), seq, file, header)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
