@@ -1,12 +1,16 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"mime/multipart"
 	"time"
 
+	"github.com/google/uuid"
+
 	"khalif-stories/internal/domain"
+	"khalif-stories/pkg/utils"
 
 )
 
@@ -31,18 +35,33 @@ func (uc *CategoryUC) Create(ctx context.Context, name string, file multipart.Fi
 	}
 
 	var imageURL string
-	var err error
+	dominantColor := "#000000"
 
-	if file != nil && uc.storage != nil {
-		imageURL, err = uc.storage.Upload(file, header)
+	if file != nil {
+		fileBytes, err := utils.ReadMultipartFileToBytes(file)
 		if err != nil {
 			return nil, err
+		}
+
+		if fileBytes != nil {
+			if color, err := utils.ExtractDominantColor(bytes.NewReader(fileBytes)); err == nil {
+				dominantColor = color
+			}
+		}
+
+		if uc.storage != nil {
+			imageURL, err = uc.storage.Upload(file, header)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	category := &domain.Category{
-		Name:     name,
-		ImageURL: imageURL,
+		UUID:          uuid.New().String(),
+		Name:          name,
+		ImageURL:      imageURL,
+		DominantColor: dominantColor,
 	}
 
 	if err := uc.categoryRepo.Create(ctx, category); err != nil {
@@ -115,16 +134,29 @@ func (uc *CategoryUC) Update(ctx context.Context, uuid string, name string, file
 		category.Name = name
 	}
 
-	if file != nil && uc.storage != nil {
-		if category.ImageURL != "" {
-			_ = uc.storage.Delete(category.ImageURL)
-		}
-
-		newImageURL, err := uc.storage.Upload(file, header)
+	if file != nil {
+		fileBytes, err := utils.ReadMultipartFileToBytes(file)
 		if err != nil {
 			return nil, err
 		}
-		category.ImageURL = newImageURL
+
+		if fileBytes != nil {
+			if color, err := utils.ExtractDominantColor(bytes.NewReader(fileBytes)); err == nil {
+				category.DominantColor = color
+			}
+		}
+
+		if uc.storage != nil {
+			if category.ImageURL != "" {
+				_ = uc.storage.Delete(category.ImageURL)
+			}
+
+			newImageURL, err := uc.storage.Upload(file, header)
+			if err != nil {
+				return nil, err
+			}
+			category.ImageURL = newImageURL
+		}
 	}
 
 	if err := uc.categoryRepo.Update(ctx, category); err != nil {

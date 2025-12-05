@@ -22,10 +22,10 @@ func InitializeApp() (*App, error) {
 	categoryRepo := repository.NewCategoryRepository(db)
 	redisRepo := repository.NewCacheRepository(client)
 	azureUploader := ProvideAzureUploader(configConfig)
-	categoryUseCase := usecase.NewCategoryUseCase(categoryRepo, redisRepo, azureUploader)
-	categoryHandler := handler.NewCategoryHandler(categoryUseCase)
+	categoryUC := usecase.NewCategoryUseCase(categoryRepo, redisRepo, azureUploader)
+	categoryHandler := handler.NewCategoryHandler(categoryUC)
 	storyRepo := repository.NewStoryRepository(db)
-	storyUseCase := usecase.NewStoryUseCase(configConfig, storyRepo, redisRepo, azureUploader)
+	storyUseCase := usecase.NewStoryUseCase(configConfig, storyRepo, categoryRepo, redisRepo, azureUploader)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
 	app := NewApp(db, client, categoryHandler, storyHandler)
 	return app, nil
