@@ -21,6 +21,18 @@ func (r *StoryRepo) Create(ctx context.Context, s *domain.Story) error {
 	return r.db.WithContext(ctx).Create(s).Error
 }
 
+func (r *StoryRepo) CheckDuplicate(ctx context.Context, title, description string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&domain.Story{}).
+		Where("title = ?", title).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *StoryRepo) GetAll(ctx context.Context, page, limit int, sort string) ([]domain.Story, error) {
 	var stories []domain.Story
 	offset := (page - 1) * limit

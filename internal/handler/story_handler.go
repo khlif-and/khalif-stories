@@ -1,95 +1,118 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"khalif-stories/internal/domain"
-	"khalif-stories/pkg/utils"
 
 )
 
-type CreateStoryInput struct {
-	Title        string `form:"title" binding:"required"`
-	Description  string `form:"description"`
-	CategoryUUID string `form:"category_id" binding:"required"` // Ubah tipe jadi string (UUID)
-}
-
 type StoryHandler struct {
-	useCase domain.StoryUseCase
+	uc domain.StoryUseCase
 }
 
-func NewStoryHandler(u domain.StoryUseCase) *StoryHandler {
-	return &StoryHandler{useCase: u}
+func NewStoryHandler(uc domain.StoryUseCase) *StoryHandler {
+	return &StoryHandler{uc: uc}
 }
 
 func (h *StoryHandler) Create(c *gin.Context) {
-	var input CreateStoryInput
-	if err := c.ShouldBind(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
+	title := c.PostForm("title")
+	desc := c.PostForm("description")
+	categoryID := c.PostForm("category_id")
+	userID := c.GetString("user_id") 
 
-	// Ambil UserID dari Middleware Auth
-	userID := fmt.Sprintf("%v", c.MustGet("user_id"))
-
-	file, header, err := c.Request.FormFile("thumbnail")
+	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "thumbnail required")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Thumbnail image is required"})
 		return
 	}
 
-	// Panggil UseCase dengan Parameter Baru
-	res, err := h.useCase.Create(c.Request.Context(), input.Title, input.Description, input.CategoryUUID, userID, file, header)
+	story, err := h.uc.Create(c.Request.Context(), title, desc, categoryID, userID, file, header)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.SuccessResponse(c, http.StatusCreated, res)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Story created successfully",
+		"data":    story,
+	})
+}
+
+func (h *StoryHandler) Update(c *gin.Context) {
+	uuid := c.Param("uuid")
+	title := c.PostForm("title")
+	desc := c.PostForm("description")
+	categoryID := c.PostForm("category_id")
+	status := c.PostForm("status")
+
+	file, header, _ := c.Request.FormFile("file")
+
+	story, err := h.uc.Update(c.Request.Context(), uuid, title, desc, categoryID, status, file, header)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Story updated successfully",
+		"data":    story,
+	})
 }
 
 func (h *StoryHandler) GetAll(c *gin.Context) {
-	p := utils.GeneratePaginationFromRequest(c)
-	res, err := h.useCase.GetAll(c.Request.Context(), p.Page, p.Limit, p.Sort)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	sort := c.DefaultQuery("sort", "created_at desc")
+
+	stories, err := h.uc.GetAll(c.Request.Context(), page, limit, sort)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.SuccessResponseWithMeta(c, http.StatusOK, res, p)
+
+	c.JSON(http.StatusOK, gin.H{"data": stories})
 }
 
 func (h *StoryHandler) Search(c *gin.Context) {
-	q := c.Query("q")
-	if q == "" {
-		utils.ErrorResponse(c, http.StatusBadRequest, "query required")
-		return
-	}
-	res, err := h.useCase.Search(c.Request.Context(), q)
+	query := c.Query("q")
+	stories, err := h.uc.Search(c.Request.Context(), query)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.SuccessResponse(c, http.StatusOK, res)
+
+	c.JSON(http.StatusOK, gin.H{"data": stories})
 }
 
 func (h *StoryHandler) Delete(c *gin.Context) {
-	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	uuid := c.Param("uuid")
+	if err := h.uc.Delete(c.Request.Context(), uuid); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.SuccessMessage(c, http.StatusOK, "deleted")
+
+	c.JSON(http.StatusOK, gin.H{"message": "Story deleted successfully"})
 }
 
 func (h *StoryHandler) AddSlide(c *gin.Context) {
-	seq, _ := strconv.Atoi(c.PostForm("sequence"))
-	file, header, _ := c.Request.FormFile("image")
-	res, err := h.useCase.AddSlide(c.Request.Context(), c.Param("id"), c.PostForm("content"), seq, file, header)
+	storyUUID := c.Param("uuid")
+	content := c.PostForm("content")
+	sequence, _ := strconv.Atoi(c.PostForm("sequence"))
+
+	file, header, _ := c.Request.FormFile("file")
+
+	slide, err := h.uc.AddSlide(c.Request.Context(), storyUUID, content, sequence, file, header)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	utils.SuccessResponse(c, http.StatusCreated, res)
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Slide added successfully",
+		"data":    slide,
+	})
 }

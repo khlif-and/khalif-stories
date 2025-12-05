@@ -19,6 +19,7 @@ func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
 	auth := middleware.AuthMiddleware(cfg.JWTSecret)
 	admin := middleware.OnlyAdmin()
 
+	// Categories tetap pakai :id (karena biasanya pakai integer ID)
 	r.GET("/api/categories", app.CategoryHandler.GetAll)
 	r.GET("/api/categories/:id", app.CategoryHandler.GetOne)
 	r.GET("/api/search/categories", app.CategoryHandler.Search)
@@ -34,7 +35,10 @@ func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
 		adm.DELETE("/categories/:id", app.CategoryHandler.Delete)
 
 		adm.POST("/stories", app.StoryHandler.Create)
-		adm.DELETE("/stories/:id", app.StoryHandler.Delete)
-		adm.POST("/stories/:id/slides", app.StoryHandler.AddSlide)
+		
+		// PERBAIKAN DISINI: Ubah :id menjadi :uuid
+		adm.PUT("/stories/:uuid", app.StoryHandler.Update)
+		adm.DELETE("/stories/:uuid", app.StoryHandler.Delete)
+		adm.POST("/stories/:uuid/slides", app.StoryHandler.AddSlide)
 	}
 }

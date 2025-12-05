@@ -57,15 +57,19 @@ type CategoryRepository interface {
 }
 
 type StoryRepository interface {
-	Create(ctx context.Context, story *Story) error
-	GetByID(ctx context.Context, id uint) (*Story, error)
-	GetByUUID(ctx context.Context, uuid string) (*Story, error)
+	Create(ctx context.Context, s *Story) error
 	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
 	Search(ctx context.Context, query string) ([]Story, error)
-	Update(ctx context.Context, story *Story) error
-	Delete(ctx context.Context, uuid string) error
+	GetByID(ctx context.Context, id uint) (*Story, error)
+	GetByUUID(ctx context.Context, uuid string) (*Story, error)
+	Update(ctx context.Context, s *Story) error
 	UpdateColor(ctx context.Context, id uint, color string) error
-	CreateSlide(ctx context.Context, slide *Slide) error
+	Delete(ctx context.Context, uuid string) error
+	
+	// TAMBAHKAN INI:
+	CheckDuplicate(ctx context.Context, title, description string) (bool, error)
+
+	CreateSlide(ctx context.Context, s *Slide) error
 	CountSlides(ctx context.Context, storyID uint) (int64, error)
 }
 
@@ -91,8 +95,8 @@ type CategoryUseCase interface {
 }
 
 type StoryUseCase interface {
-	// Update: Menerima categoryUUID (string) dan userID (string)
 	Create(ctx context.Context, title, desc string, categoryUUID string, userID string, file multipart.File, header *multipart.FileHeader) (*Story, error)
+	Update(ctx context.Context, storyUUID string, title, desc, categoryUUID, status string, file multipart.File, header *multipart.FileHeader) (*Story, error)
 	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
 	Search(ctx context.Context, query string) (*[]Story, error)
 	Delete(ctx context.Context, uuid string) error
