@@ -27,6 +27,7 @@ type Story struct {
 	DominantColor string    `json:"dominant_color"`
 	CategoryID    uint      `gorm:"index" json:"category_id"`
 	Category      Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	UserID        string    `gorm:"index" json:"user_id"` // Field Baru: Siapa yang post
 	Slides        []Slide   `gorm:"foreignKey:StoryID" json:"slides,omitempty"`
 	SlideCount    int       `gorm:"default:0" json:"slide_count"`
 	Status        string    `gorm:"index;default:'Draft'" json:"status"`
@@ -90,7 +91,8 @@ type CategoryUseCase interface {
 }
 
 type StoryUseCase interface {
-	Create(ctx context.Context, title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*Story, error)
+	// Update: Menerima categoryUUID (string) dan userID (string)
+	Create(ctx context.Context, title, desc string, categoryUUID string, userID string, file multipart.File, header *multipart.FileHeader) (*Story, error)
 	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
 	Search(ctx context.Context, query string) (*[]Story, error)
 	Delete(ctx context.Context, uuid string) error

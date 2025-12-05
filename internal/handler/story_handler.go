@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,9 +13,9 @@ import (
 )
 
 type CreateStoryInput struct {
-	Title       string `form:"title" binding:"required"`
-	Description string `form:"description"`
-	CategoryID  uint   `form:"category_id" binding:"required"`
+	Title        string `form:"title" binding:"required"`
+	Description  string `form:"description"`
+	CategoryUUID string `form:"category_id" binding:"required"` // Ubah tipe jadi string (UUID)
 }
 
 type StoryHandler struct {
@@ -32,13 +33,17 @@ func (h *StoryHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Ambil UserID dari Middleware Auth
+	userID := fmt.Sprintf("%v", c.MustGet("user_id"))
+
 	file, header, err := c.Request.FormFile("thumbnail")
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "thumbnail required")
 		return
 	}
 
-	res, err := h.useCase.Create(c.Request.Context(), input.Title, input.Description, input.CategoryID, file, header)
+	// Panggil UseCase dengan Parameter Baru
+	res, err := h.useCase.Create(c.Request.Context(), input.Title, input.Description, input.CategoryUUID, userID, file, header)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return

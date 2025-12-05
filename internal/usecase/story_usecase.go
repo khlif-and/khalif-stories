@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/google/uuid"
 
 	"khalif-stories/internal/config"
@@ -20,17 +21,26 @@ import (
 )
 
 type StoryUC struct {
-	cfg       *config.Config
-	repo      domain.StoryRepository
-	redisRepo *repository.RedisRepo
-	uploader  *utils.AzureUploader
+	cfg          *config.Config
+	repo         domain.StoryRepository
+	categoryRepo domain.CategoryRepository
+	redisRepo    *repository.RedisRepo
+	uploader     *utils.AzureUploader
 }
 
-func NewStoryUseCase(cfg *config.Config, repo domain.StoryRepository, redisRepo *repository.RedisRepo, uploader *utils.AzureUploader) domain.StoryUseCase {
-	return &StoryUC{cfg: cfg, repo: repo, redisRepo: redisRepo, uploader: uploader}
+func NewStoryUseCase(cfg *config.Config, repo domain.StoryRepository, categoryRepo domain.CategoryRepository, redisRepo *repository.RedisRepo, uploader *utils.AzureUploader) domain.StoryUseCase {
+	return &StoryUC{cfg: cfg, repo: repo, categoryRepo: categoryRepo, redisRepo: redisRepo, uploader: uploader}
 }
 
-func (u *StoryUC) Create(ctx context.Context, title, desc string, categoryID uint, file multipart.File, header *multipart.FileHeader) (*domain.Story, error) {
+func (u *StoryUC) Create(ctx context.Context, title, desc string, categoryUUID string, userID string, file multipart.File, header *multipart.FileHeader) (*domain.Story, error) {
+	category, err := u.categoryRepo.GetByUUID(ctx, categoryUUID)
+	if err != nil {
+		return nil, errors.New("invalid category or database error")
+	}
+	if category == nil {
+		return nil, errors.New("category not found")
+	}
+
 	var thumbURL string
 	dominantColor := "#000000"
 
@@ -41,10 +51,26 @@ func (u *StoryUC) Create(ctx context.Context, title, desc string, categoryID uin
 		}
 		if fileBytes != nil {
 			filename := "stories/thumbnails/" + uuid.New().String() + filepath.Ext(header.Filename)
-			thumbURL, err = u.uploader.UploadFile(ctx, file, filename)
-			if err != nil {
-				return nil, err
+
+			connectionString := u.cfg.AzureConnStr
+			containerName := u.cfg.AzureContainerStoriesName
+
+			if connectionString == "" || containerName == "" {
+				return nil, errors.New("azure configuration is missing in config file/env")
 			}
+
+			client, err := azblob.NewClientFromConnectionString(connectionString, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create azure client: %w", err)
+			}
+
+			_, err = client.UploadBuffer(ctx, containerName, filename, fileBytes, &azblob.UploadBufferOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to upload to azure: %w", err)
+			}
+
+			thumbURL = fmt.Sprintf("%s/%s/%s", client.URL(), containerName, filename)
+
 			if color, err := utils.ExtractDominantColor(bytes.NewReader(fileBytes)); err == nil {
 				dominantColor = color
 			}
@@ -55,7 +81,8 @@ func (u *StoryUC) Create(ctx context.Context, title, desc string, categoryID uin
 		UUID:          uuid.New().String(),
 		Title:         title,
 		Description:   desc,
-		CategoryID:    categoryID,
+		CategoryID:    category.ID,
+		UserID:        userID,
 		ThumbnailURL:  thumbURL,
 		DominantColor: dominantColor,
 		Status:        "Draft",
@@ -107,7 +134,7 @@ func (u *StoryUC) AddSlide(ctx context.Context, storyUUID string, content string
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if count >= int64(u.cfg.SlideLimit) {
 		return nil, errors.New("slide limit reached")
 	}
