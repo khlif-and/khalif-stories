@@ -16,19 +16,37 @@ import (
 
 )
 
+// @title           Khalif Stories API
+// @version         1.0
+// @description     API Service for Khalif Stories Application
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name    API Support
+// @contact.email   support@khalifstories.com
+
+// @license.name    Apache 2.0
+// @license.url     http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 type App struct {
 	DB              *gorm.DB
 	RDB             *redis.Client
 	CategoryHandler *handler.CategoryHandler
 	StoryHandler    *handler.StoryHandler
+	ChapterHandler  *handler.ChapterHandler
 }
 
-func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *handler.StoryHandler) *App {
+func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *handler.StoryHandler, chapH *handler.ChapterHandler) *App {
 	return &App{
 		DB:              db,
 		RDB:             rdb,
 		CategoryHandler: ch,
 		StoryHandler:    sh,
+		ChapterHandler:  chapH,
 	}
 }
 
@@ -49,7 +67,7 @@ func main() {
 		logger.Info("Database reset successfully")
 	}
 
-	app.DB.AutoMigrate(&domain.Category{}, &domain.Story{}, &domain.Slide{})
+	app.DB.AutoMigrate(&domain.Category{}, &domain.Story{}, &domain.Chapter{}, &domain.Slide{})
 
 	database.RunMigrations(app.DB)
 
