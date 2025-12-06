@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"mime/multipart"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"khalif-stories/internal/config"
 	"khalif-stories/internal/domain"
 	"khalif-stories/pkg/utils"
 
@@ -17,14 +17,18 @@ import (
 type CategoryUC struct {
 	categoryRepo domain.CategoryRepository
 	redisRepo    domain.RedisRepository
-	storage      domain.StorageRepository
+	uploader     *utils.AzureUploader
+	cfg          *config.Config
 }
 
-func NewCategoryUseCase(repo domain.CategoryRepository, redis domain.RedisRepository, storage domain.StorageRepository) *CategoryUC {
+func NewCategoryUseCase(repo domain.CategoryRepository, redis domain.RedisRepository, uploader *utils.AzureUploader) *CategoryUC {
+	cfg := config.LoadConfig() 
+	
 	return &CategoryUC{
 		categoryRepo: repo,
 		redisRepo:    redis,
-		storage:      storage,
+		uploader:     uploader,
+		cfg:          cfg,
 	}
 }
 
@@ -34,38 +38,31 @@ func (uc *CategoryUC) Create(ctx context.Context, name string, file multipart.Fi
 		return nil, domain.ErrConflict
 	}
 
-	var imageURL string
-	dominantColor := "#000000"
-
-	if file != nil {
-		fileBytes, err := utils.ReadMultipartFileToBytes(file)
-		if err != nil {
-			return nil, err
-		}
-
-		if fileBytes != nil {
-			if color, err := utils.ExtractDominantColor(bytes.NewReader(fileBytes)); err == nil {
-				dominantColor = color
-			}
-		}
-
-		if uc.storage != nil {
-			imageURL, err = uc.storage.Upload(file, header)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	category := &domain.Category{
-		UUID:          uuid.New().String(),
-		Name:          name,
-		ImageURL:      imageURL,
-		DominantColor: dominantColor,
+		UUID: uuid.New().String(),
+		Name: name,
 	}
 
 	if err := uc.categoryRepo.Create(ctx, category); err != nil {
 		return nil, err
+	}
+
+	if file != nil {
+		imageURL, domColor, err := utils.UploadAndAnalyzeImage(ctx, uc.uploader, file, header, uc.cfg.AzureContainer, "categories/", category.UUID)
+		
+		if err != nil {
+			uc.categoryRepo.Delete(ctx, category.UUID)
+			return nil, err
+		}
+
+		category.ImageURL = imageURL
+		category.DominantColor = domColor
+
+		if err := uc.categoryRepo.Update(ctx, category); err != nil {
+			uc.uploader.DeleteFromContainer(ctx, uc.cfg.AzureContainer, imageURL)
+			uc.categoryRepo.Delete(ctx, category.UUID)
+			return nil, err
+		}
 	}
 
 	if uc.redisRepo != nil {
@@ -73,6 +70,73 @@ func (uc *CategoryUC) Create(ctx context.Context, name string, file multipart.Fi
 	}
 
 	return category, nil
+}
+
+func (uc *CategoryUC) Update(ctx context.Context, uuid string, name string, file multipart.File, header *multipart.FileHeader) (*domain.Category, error) {
+	category, err := uc.categoryRepo.GetByUUID(ctx, uuid)
+	if err != nil { return nil, err }
+	if category == nil { return nil, domain.ErrNotFound }
+
+	oldImageURL := category.ImageURL
+
+	if name != "" && name != category.Name {
+		existing, _ := uc.categoryRepo.GetByName(ctx, name)
+		if existing != nil && existing.UUID != category.UUID {
+			return nil, domain.ErrConflict
+		}
+		category.Name = name
+	}
+
+	var newImageURL string
+	if file != nil {
+		newUUID := uuid
+		
+		url, color, err := utils.UploadAndAnalyzeImage(ctx, uc.uploader, file, header, uc.cfg.AzureContainer, "categories/", newUUID)
+		if err != nil {
+			return nil, err
+		}
+		
+		newImageURL = url
+		category.ImageURL = newImageURL
+		category.DominantColor = color
+	}
+
+	if err := uc.categoryRepo.Update(ctx, category); err != nil {
+		if newImageURL != "" {
+			uc.uploader.DeleteFromContainer(ctx, uc.cfg.AzureContainer, newImageURL)
+		}
+		return nil, err
+	}
+
+	if newImageURL != "" && oldImageURL != "" {
+		uc.uploader.DeleteFromContainer(ctx, uc.cfg.AzureContainer, oldImageURL)
+	}
+
+	if uc.redisRepo != nil {
+		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
+	}
+
+	return category, nil
+}
+
+func (uc *CategoryUC) Delete(ctx context.Context, uuid string) error {
+	category, err := uc.categoryRepo.GetByUUID(ctx, uuid)
+	if err != nil { return err }
+	if category == nil { return domain.ErrNotFound }
+
+	if err := uc.categoryRepo.Delete(ctx, uuid); err != nil {
+		return err
+	}
+
+	if category.ImageURL != "" && uc.uploader != nil {
+		_ = uc.uploader.DeleteFromContainer(ctx, uc.cfg.AzureContainer, category.ImageURL)
+	}
+
+	if uc.redisRepo != nil {
+		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
+	}
+
+	return nil
 }
 
 func (uc *CategoryUC) GetAll(ctx context.Context) ([]domain.Category, error) {
@@ -104,92 +168,11 @@ func (uc *CategoryUC) GetAll(ctx context.Context) ([]domain.Category, error) {
 
 func (uc *CategoryUC) Get(ctx context.Context, uuid string) (*domain.Category, error) {
 	cat, err := uc.categoryRepo.GetByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	if cat == nil {
-		return nil, domain.ErrNotFound
-	}
+	if err != nil { return nil, err }
+	if cat == nil { return nil, domain.ErrNotFound }
 	return cat, nil
 }
 
 func (uc *CategoryUC) Search(ctx context.Context, query string) ([]domain.Category, error) {
 	return uc.categoryRepo.Search(ctx, query)
-}
-
-func (uc *CategoryUC) Update(ctx context.Context, uuid string, name string, file multipart.File, header *multipart.FileHeader) (*domain.Category, error) {
-	category, err := uc.categoryRepo.GetByUUID(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	if category == nil {
-		return nil, domain.ErrNotFound
-	}
-
-	if name != "" && name != category.Name {
-		existing, _ := uc.categoryRepo.GetByName(ctx, name)
-		if existing != nil && existing.UUID != category.UUID {
-			return nil, domain.ErrConflict
-		}
-		category.Name = name
-	}
-
-	if file != nil {
-		fileBytes, err := utils.ReadMultipartFileToBytes(file)
-		if err != nil {
-			return nil, err
-		}
-
-		if fileBytes != nil {
-			if color, err := utils.ExtractDominantColor(bytes.NewReader(fileBytes)); err == nil {
-				category.DominantColor = color
-			}
-		}
-
-		if uc.storage != nil {
-			if category.ImageURL != "" {
-				_ = uc.storage.Delete(category.ImageURL)
-			}
-
-			newImageURL, err := uc.storage.Upload(file, header)
-			if err != nil {
-				return nil, err
-			}
-			category.ImageURL = newImageURL
-		}
-	}
-
-	if err := uc.categoryRepo.Update(ctx, category); err != nil {
-		return nil, err
-	}
-
-	if uc.redisRepo != nil {
-		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
-	}
-
-	return category, nil
-}
-
-func (uc *CategoryUC) Delete(ctx context.Context, uuid string) error {
-	category, err := uc.categoryRepo.GetByUUID(ctx, uuid)
-	if err != nil {
-		return err
-	}
-	if category == nil {
-		return domain.ErrNotFound
-	}
-
-	if category.ImageURL != "" && uc.storage != nil {
-		_ = uc.storage.Delete(category.ImageURL)
-	}
-
-	if err := uc.categoryRepo.Delete(ctx, uuid); err != nil {
-		return err
-	}
-
-	if uc.redisRepo != nil {
-		_ = uc.redisRepo.DeletePrefix(ctx, domain.CacheKeyCategoryAll)
-	}
-
-	return nil
 }

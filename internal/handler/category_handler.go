@@ -19,14 +19,42 @@ func NewCategoryHandler(u domain.CategoryUseCase) *CategoryHandler {
 	return &CategoryHandler{useCase: u}
 }
 
+// --- DTOs ---
+
+type CreateCategoryRequest struct {
+	Name string `form:"name" binding:"required"`
+}
+
+type UpdateCategoryRequest struct {
+	Name string `form:"name"`
+}
+
+// --- HANDLERS ---
+
+// CreateCategory godoc
+// @Summary      Create a new category
+// @Description  Create a new category with an image
+// @Tags         categories
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        name   formData  string  true  "Category Name"
+// @Param        image  formData  file    false "Category Image"
+// @Success      201  {object}  domain.Category
+// @Failure      400  {object}  utils.APIResponse
+// @Failure      409  {object}  utils.APIResponse
+// @Failure      500  {object}  utils.APIResponse
+// @Router       /admin/categories [post]
+// @Security     BearerAuth
 func (h *CategoryHandler) Create(c *gin.Context) {
-	name := c.PostForm("name")
-	if name == "" {
-		utils.ErrorResponse(c, http.StatusBadRequest, "name required")
+	var req CreateCategoryRequest
+	if err := c.ShouldBind(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	file, header, _ := c.Request.FormFile("image")
-	res, err := h.useCase.Create(c.Request.Context(), name, file, header)
+	
+	res, err := h.useCase.Create(c.Request.Context(), req.Name, file, header)
 	if err != nil {
 		if errors.Is(err, domain.ErrConflict) {
 			utils.ErrorResponse(c, http.StatusConflict, err.Error())
@@ -38,18 +66,28 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, res)
 }
 
+// UpdateCategory godoc
+// @Summary      Update a category
+// @Description  Update category details
+// @Tags         categories
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id     path      string  true  "Category UUID"
+// @Param        name   formData  string  false "Category Name"
+// @Param        image  formData  file    false "Category Image"
+// @Success      200  {object}  domain.Category
+// @Failure      404  {object}  utils.APIResponse
+// @Failure      500  {object}  utils.APIResponse
+// @Router       /admin/categories/{id} [put]
+// @Security     BearerAuth
 func (h *CategoryHandler) Update(c *gin.Context) {
-	ctx := c.Request.Context()
-	id := c.Param("id")
-	name := c.PostForm("name")
+	var req UpdateCategoryRequest
+	_ = c.ShouldBind(&req)
 
-	res, err := h.useCase.Update(ctx, id, name, nil, nil)
-
+	uuid := c.Param("id")
 	file, header, _ := c.Request.FormFile("image")
-	if file != nil {
-		res, err = h.useCase.Update(ctx, id, name, file, header)
-	}
 
+	res, err := h.useCase.Update(c.Request.Context(), uuid, req.Name, file, header)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			utils.ErrorResponse(c, http.StatusNotFound, err.Error())
@@ -65,6 +103,17 @@ func (h *CategoryHandler) Update(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, res)
 }
 
+// DeleteCategory godoc
+// @Summary      Delete a category
+// @Description  Delete a category by UUID
+// @Tags         categories
+// @Produce      json
+// @Param        id   path      string  true  "Category UUID"
+// @Success      200  {object}  utils.APIResponse
+// @Failure      404  {object}  utils.APIResponse
+// @Failure      500  {object}  utils.APIResponse
+// @Router       /admin/categories/{id} [delete]
+// @Security     BearerAuth
 func (h *CategoryHandler) Delete(c *gin.Context) {
 	if err := h.useCase.Delete(c.Request.Context(), c.Param("id")); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
@@ -77,6 +126,14 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 	utils.SuccessMessage(c, http.StatusOK, "deleted")
 }
 
+// GetAllCategories godoc
+// @Summary      Get all categories
+// @Description  Retrieve all categories
+// @Tags         categories
+// @Produce      json
+// @Success      200  {array}   domain.Category
+// @Failure      500  {object}  utils.APIResponse
+// @Router       /categories [get]
 func (h *CategoryHandler) GetAll(c *gin.Context) {
 	res, err := h.useCase.GetAll(c.Request.Context())
 	if err != nil {
@@ -86,6 +143,15 @@ func (h *CategoryHandler) GetAll(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, res)
 }
 
+// GetCategory godoc
+// @Summary      Get category by ID
+// @Description  Retrieve a single category
+// @Tags         categories
+// @Produce      json
+// @Param        id   path      string  true  "Category ID"
+// @Success      200  {object}  domain.Category
+// @Failure      404  {object}  utils.APIResponse
+// @Router       /categories/{id} [get]
 func (h *CategoryHandler) GetOne(c *gin.Context) {
 	res, err := h.useCase.Get(c.Request.Context(), c.Param("id"))
 	if err != nil {
@@ -99,6 +165,15 @@ func (h *CategoryHandler) GetOne(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, res)
 }
 
+// SearchCategories godoc
+// @Summary      Search categories
+// @Description  Search categories by name
+// @Tags         categories
+// @Produce      json
+// @Param        q    query     string  true  "Search Query"
+// @Success      200  {array}   domain.Category
+// @Failure      400  {object}  utils.APIResponse
+// @Router       /search/categories [get]
 func (h *CategoryHandler) Search(c *gin.Context) {
 	q := c.Query("q")
 	if q == "" {

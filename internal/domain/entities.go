@@ -14,8 +14,8 @@ type Category struct {
 	ImageURL      string    `json:"image_url"`
 	DominantColor string    `json:"dominant_color"`
 	Stories       []Story   `gorm:"foreignKey:CategoryID" json:"stories,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 type Story struct {
@@ -27,22 +27,37 @@ type Story struct {
 	DominantColor string    `json:"dominant_color"`
 	CategoryID    uint      `gorm:"index" json:"category_id"`
 	Category      Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	UserID        string    `gorm:"index" json:"user_id"` // Field Baru: Siapa yang post
+	UserID        string    `gorm:"index" json:"user_id"`
+	
 	Slides        []Slide   `gorm:"foreignKey:StoryID" json:"slides,omitempty"`
+	Chapters      []Chapter `gorm:"foreignKey:StoryID" json:"chapters,omitempty"`
+	
 	SlideCount    int       `gorm:"default:0" json:"slide_count"`
 	Status        string    `gorm:"index;default:'Draft'" json:"status"`
-	CreatedAt     time.Time `gorm:"index" json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	CreatedAt     time.Time `gorm:"index;autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+type Chapter struct {
+	ID         uint      `gorm:"primaryKey" json:"-"`
+	UUID       string    `gorm:"type:uuid;uniqueIndex" json:"id"`
+	StoryID    uint      `gorm:"index" json:"story_id"`
+	Slides     []Slide   `gorm:"foreignKey:ChapterID" json:"slides,omitempty"`
+	SlideCount int       `gorm:"default:0" json:"slide_count"`
+	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 type Slide struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	StoryID   uint      `gorm:"index" json:"story_id"`
+	StoryID   *uint     `gorm:"index" json:"story_id,omitempty"`
+	ChapterID *uint     `gorm:"index" json:"chapter_id,omitempty"` 
 	ImageURL  string    `json:"image_url"`
+	SoundURL  string    `json:"sound_url"`
 	Content   string    `json:"content"`
 	Sequence  int       `gorm:"index" json:"sequence"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 type CategoryRepository interface {
@@ -65,10 +80,7 @@ type StoryRepository interface {
 	Update(ctx context.Context, s *Story) error
 	UpdateColor(ctx context.Context, id uint, color string) error
 	Delete(ctx context.Context, uuid string) error
-	
-	// TAMBAHKAN INI:
 	CheckDuplicate(ctx context.Context, title, description string) (bool, error)
-
 	CreateSlide(ctx context.Context, s *Slide) error
 	CountSlides(ctx context.Context, storyID uint) (int64, error)
 }
@@ -98,7 +110,27 @@ type StoryUseCase interface {
 	Create(ctx context.Context, title, desc string, categoryUUID string, userID string, file multipart.File, header *multipart.FileHeader) (*Story, error)
 	Update(ctx context.Context, storyUUID string, title, desc, categoryUUID, status string, file multipart.File, header *multipart.FileHeader) (*Story, error)
 	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
-	Search(ctx context.Context, query string) (*[]Story, error)
+	GetByUUID(ctx context.Context, uuid string) (*Story, error)
+	
+	// PERBAIKAN DISINI: Hapus tanda bintang (*)
+	Search(ctx context.Context, query string) ([]Story, error)
+	
 	Delete(ctx context.Context, uuid string) error
 	AddSlide(ctx context.Context, storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
+}
+
+type ChapterRepository interface {
+	Create(ctx context.Context, c *Chapter) error
+	GetByUUID(ctx context.Context, uuid string) (*Chapter, error)
+	GetAllByStoryID(ctx context.Context, storyID uint) ([]Chapter, error)
+	Delete(ctx context.Context, uuid string) error
+	CreateSlide(ctx context.Context, s *Slide) error
+	CountSlides(ctx context.Context, chapterID uint) (int64, error)
+}
+
+type ChapterUseCase interface {
+	Create(ctx context.Context, storyUUID string) (*Chapter, error)
+	GetByUUID(ctx context.Context, uuid string) (*Chapter, error)
+	Delete(ctx context.Context, uuid string) error
+	AddSlide(ctx context.Context, chapterUUID string, content string, sequence int, imageFile multipart.File, imageHeader *multipart.FileHeader, soundFile multipart.File, soundHeader *multipart.FileHeader) (*Slide, error)
 }

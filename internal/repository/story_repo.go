@@ -58,9 +58,14 @@ func (r *StoryRepo) GetByID(ctx context.Context, id uint) (*domain.Story, error)
 
 func (r *StoryRepo) GetByUUID(ctx context.Context, uuid string) (*domain.Story, error) {
 	var story domain.Story
-	err := r.db.WithContext(ctx).Preload("Slides", func(db *gorm.DB) *gorm.DB {
-		return db.Order("sequence ASC")
-	}).Where("uuid = ?", uuid).First(&story).Error
+	err := r.db.WithContext(ctx).
+		Preload("Category").
+		Preload("Slides", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sequence ASC")
+		}).
+		Where("uuid = ?", uuid).
+		First(&story).Error
+	
 	return &story, err
 }
 

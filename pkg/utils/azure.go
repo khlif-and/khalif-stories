@@ -27,11 +27,10 @@ func (a *AzureUploader) Upload(file multipart.File, header *multipart.FileHeader
 }
 
 func (a *AzureUploader) Delete(fileURL string) error {
-	parts := strings.Split(fileURL, "/")
-	if len(parts) == 0 {
+	blobName := ExtractBlobName(fileURL, a.ContainerName)
+	if blobName == "" {
 		return nil
 	}
-	blobName := parts[len(parts)-1]
 	_, err := a.Client.DeleteBlob(context.Background(), a.ContainerName, blobName, nil)
 	return err
 }
@@ -52,4 +51,21 @@ func (a *AzureUploader) UploadToContainer(ctx context.Context, file multipart.Fi
 	}
 
 	return baseURL + containerName + "/" + filename, nil
+}
+
+func (a *AzureUploader) DeleteFromContainer(ctx context.Context, containerName, fileURL string) error {
+	blobName := ExtractBlobName(fileURL, containerName)
+	if blobName == "" {
+		return nil
+	}
+	_, err := a.Client.DeleteBlob(ctx, containerName, blobName, nil)
+	return err
+}
+
+func ExtractBlobName(fullURL, containerName string) string {
+	parts := strings.Split(fullURL, containerName+"/")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return ""
 }

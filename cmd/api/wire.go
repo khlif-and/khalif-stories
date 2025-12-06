@@ -11,7 +11,7 @@ import (
 	"khalif-stories/internal/handler"
 	"khalif-stories/internal/repository"
 	"khalif-stories/internal/usecase"
-	"khalif-stories/pkg/utils" // [Perlu import ini untuk bind AzureUploader]
+	// HAPUS BARIS INI: "khalif-stories/pkg/utils" 
 
 )
 
@@ -25,27 +25,29 @@ func InitializeApp() (*App, error) {
 		// Repository (Provider)
 		repository.NewCategoryRepository,
 		repository.NewStoryRepository,
+		repository.NewChapterRepository,
 		repository.NewCacheRepository,
 
 		// Binding Repository Interface -> Implementation
 		wire.Bind(new(domain.CategoryRepository), new(*repository.CategoryRepo)),
 		wire.Bind(new(domain.StoryRepository), new(*repository.StoryRepo)),
+		wire.Bind(new(domain.ChapterRepository), new(*repository.ChapterRepo)),
 		
-		// [BARU] Binding untuk Dependency CategoryUseCase
 		wire.Bind(new(domain.RedisRepository), new(*repository.RedisRepo)),
-		wire.Bind(new(domain.StorageRepository), new(*utils.AzureUploader)),
 
 		// UseCase (Provider)
 		usecase.NewCategoryUseCase,
 		usecase.NewStoryUseCase,
+		usecase.NewChapterUseCase,
 
-		// [BARU] Binding Interface UseCase -> Implementation Struct
-		// Diperlukan karena NewCategoryUseCase mengembalikan *CategoryUC, tapi Handler minta domain.CategoryUseCase
+		// Binding Interface UseCase -> Implementation Struct
 		wire.Bind(new(domain.CategoryUseCase), new(*usecase.CategoryUC)),
+		wire.Bind(new(domain.ChapterUseCase), new(*usecase.ChapterUC)),
 
 		// Handler
 		handler.NewCategoryHandler,
 		handler.NewStoryHandler,
+		handler.NewChapterHandler,
 
 		NewApp,
 	)

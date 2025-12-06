@@ -1,0 +1,653 @@
+basePath: /
+definitions:
+  domain.Category:
+    properties:
+      created_at:
+        type: string
+      dominant_color:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      name:
+        type: string
+      stories:
+        items:
+          $ref: '#/definitions/domain.Story'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  domain.Chapter:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      slide_count:
+        type: integer
+      slides:
+        items:
+          $ref: '#/definitions/domain.Slide'
+        type: array
+      story_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  domain.Slide:
+    properties:
+      chapter_id:
+        type: integer
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      image_url:
+        type: string
+      sequence:
+        type: integer
+      sound_url:
+        type: string
+      story_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  domain.Story:
+    properties:
+      category:
+        $ref: '#/definitions/domain.Category'
+      category_id:
+        type: integer
+      chapters:
+        items:
+          $ref: '#/definitions/domain.Chapter'
+        type: array
+      created_at:
+        type: string
+      description:
+        type: string
+      dominant_color:
+        type: string
+      id:
+        type: string
+      slide_count:
+        type: integer
+      slides:
+        items:
+          $ref: '#/definitions/domain.Slide'
+        type: array
+      status:
+        type: string
+      thumbnail_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  utils.APIResponse:
+    properties:
+      data: {}
+      error:
+        type: string
+      message:
+        type: string
+      meta: {}
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@khalifstories.com
+    name: API Support
+  description: API Service for Khalif Stories Application
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Khalif Stories API
+  version: "1.0"
+paths:
+  /admin/categories:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new category with an image
+      parameters:
+      - description: Category Name
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: Category Image
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Category'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new category
+      tags:
+      - categories
+  /admin/categories/{id}:
+    delete:
+      description: Delete a category by UUID
+      parameters:
+      - description: Category UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a category
+      tags:
+      - categories
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update category details
+      parameters:
+      - description: Category UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Category Name
+        in: formData
+        name: name
+        type: string
+      - description: Category Image
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Category'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a category
+      tags:
+      - categories
+  /admin/chapters:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a chapter for a story (Title inherited from Story)
+      parameters:
+      - description: Story UUID
+        in: formData
+        name: story_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Chapter'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new chapter
+      tags:
+      - chapters
+  /admin/chapters/{uuid}:
+    delete:
+      description: Delete chapter and all its slides/assets
+      parameters:
+      - description: Chapter UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete chapter
+      tags:
+      - chapters
+  /admin/chapters/{uuid}/slides:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Add slide (content, image, sound) to a chapter. Max 20 slides.
+      parameters:
+      - description: Chapter UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Content Text
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Sequence Number
+        in: formData
+        name: sequence
+        required: true
+        type: integer
+      - description: Slide Image
+        in: formData
+        name: image
+        type: file
+      - description: Slide Audio
+        in: formData
+        name: sound
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Slide'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Add slide to chapter
+      tags:
+      - chapters
+  /admin/stories:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new story with thumbnail
+      parameters:
+      - description: Title
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        required: true
+        type: string
+      - description: Category UUID
+        in: formData
+        name: category_id
+        required: true
+        type: string
+      - description: Thumbnail Image
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Story'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new story
+      tags:
+      - stories
+  /admin/stories/{uuid}:
+    delete:
+      description: Delete a story by UUID
+      parameters:
+      - description: Story UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a story
+      tags:
+      - stories
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update story details
+      parameters:
+      - description: Story UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Title
+        in: formData
+        name: title
+        type: string
+      - description: Description
+        in: formData
+        name: description
+        type: string
+      - description: Category UUID
+        in: formData
+        name: category_id
+        type: string
+      - description: Status
+        in: formData
+        name: status
+        type: string
+      - description: Thumbnail Image
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Story'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a story
+      tags:
+      - stories
+  /admin/stories/{uuid}/slides:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Add content slide to story
+      parameters:
+      - description: Story UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Content Text
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Sequence Number
+        in: formData
+        name: sequence
+        required: true
+        type: integer
+      - description: Slide Image
+        in: formData
+        name: file
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Slide'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Add a slide to story
+      tags:
+      - stories
+  /categories:
+    get:
+      description: Retrieve all categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Category'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Get all categories
+      tags:
+      - categories
+  /categories/{id}:
+    get:
+      description: Retrieve a single category
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Category'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Get category by ID
+      tags:
+      - categories
+  /chapters/{uuid}:
+    get:
+      description: Get chapter by UUID with all slides
+      parameters:
+      - description: Chapter UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Chapter'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Get chapter detail
+      tags:
+      - chapters
+  /search/categories:
+    get:
+      description: Search categories by name
+      parameters:
+      - description: Search Query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Category'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Search categories
+      tags:
+      - categories
+  /search/stories:
+    get:
+      description: Search stories by title or description
+      parameters:
+      - description: Search Query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Story'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Search stories
+      tags:
+      - stories
+  /stories:
+    get:
+      description: Get stories with pagination
+      parameters:
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Sort (e.g., created_at desc)
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Story'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Get all stories
+      tags:
+      - stories
+  /stories/{uuid}:
+    get:
+      description: Retrieve a single story
+      parameters:
+      - description: Story UUID
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Story'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      summary: Get story by UUID
+      tags:
+      - stories
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

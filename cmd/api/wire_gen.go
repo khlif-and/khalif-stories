@@ -13,6 +13,10 @@ import (
 	"khalif-stories/internal/usecase"
 )
 
+import (
+	_ "khalif-stories/docs"
+)
+
 // Injectors from wire.go:
 
 func InitializeApp() (*App, error) {
@@ -27,6 +31,9 @@ func InitializeApp() (*App, error) {
 	storyRepo := repository.NewStoryRepository(db)
 	storyUseCase := usecase.NewStoryUseCase(configConfig, storyRepo, categoryRepo, redisRepo, azureUploader)
 	storyHandler := handler.NewStoryHandler(storyUseCase)
-	app := NewApp(db, client, categoryHandler, storyHandler)
+	chapterRepo := repository.NewChapterRepository(db)
+	chapterUC := usecase.NewChapterUseCase(configConfig, chapterRepo, storyRepo, azureUploader)
+	chapterHandler := handler.NewChapterHandler(chapterUC)
+	app := NewApp(db, client, categoryHandler, storyHandler, chapterHandler)
 	return app, nil
 }
