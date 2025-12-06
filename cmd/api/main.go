@@ -34,7 +34,7 @@ func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *han
 
 func main() {
 	logger.Init()
-	
+
 	refreshFlag := flag.Bool("refresh", false, "Reset Database")
 	flag.Parse()
 
@@ -46,19 +46,20 @@ func main() {
 
 	if *refreshFlag {
 		database.ResetSchema(app.DB)
+		logger.Info("Database reset successfully")
 	}
 
 	app.DB.AutoMigrate(&domain.Category{}, &domain.Story{}, &domain.Slide{})
-	
+
 	database.RunMigrations(app.DB)
 
 	database.SeedCategories(app.DB)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
-	
+
 	SetupRoutes(r, app, cfg)
-	
+
 	logger.Info("Server starting", zap.String("port", cfg.Port))
 	if err := r.Run(":" + cfg.Port); err != nil {
 		logger.Fatal("Server start failed", zap.Error(err))
