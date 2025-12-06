@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    container_name: khalif_api
+    restart: always
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=host=db user=postgres password=postgres dbname=khalif_db port=5432 sslmode=disable
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    container_name: khalif_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: khalif_db
+    ports:
+      # --- UBAH KE 5434 ---
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: khalif_redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
