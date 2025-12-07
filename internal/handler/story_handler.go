@@ -234,3 +234,16 @@ func (h *StoryHandler) AddSlide(c *gin.Context) {
 
 	utils.SuccessResponse(c, http.StatusCreated, slide)
 }
+
+func (h *StoryHandler) GetRecommendations(c *gin.Context) {
+    userID := c.GetString("user_id")
+    
+    // GUNAKAN h.uc (Bukan h.StoryUseCase)
+    recs, err := h.uc.GetRecommendations(c.Request.Context(), userID)
+    
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"data": recs})
+}

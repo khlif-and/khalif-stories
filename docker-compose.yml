@@ -2,7 +2,7 @@ services:
   app:
     build: .
     container_name: khalif_api
-    restart: always
+    restart: unless-stopped  # <-- UBAH KE INI (Biar gak auto-start kalau abis dimatiin)
     ports:
       - "8082:8082"
     env_file:
@@ -14,16 +14,28 @@ services:
       - db
       - redis
 
+  ml_engine:
+    build: ../khalif-algorythm-py
+    container_name: khalif_ml
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=postgres
+      - DB_NAME=khalif_db
+    depends_on:
+      - db
+    restart: "no" # <-- TETAP INI (Karena dia cuma jalan sebentar lalu mati)
+
   db:
     image: postgres:15-alpine
     container_name: khalif_db
-    restart: always
+    restart: unless-stopped  # <-- UBAH KE INI
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: khalif_db
     ports:
-      # --- UBAH KE 5434 ---
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -31,7 +43,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: khalif_redis
-    restart: always
+    restart: unless-stopped  # <-- UBAH KE INI
     ports:
       - "6380:6379"
     volumes:

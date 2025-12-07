@@ -67,7 +67,15 @@ func main() {
 		logger.Info("Database reset successfully")
 	}
 
-	app.DB.AutoMigrate(&domain.Category{}, &domain.Story{}, &domain.Chapter{}, &domain.Slide{})
+
+	app.DB.AutoMigrate(
+		&domain.Category{}, 
+		&domain.Story{}, 
+		&domain.Chapter{}, 
+		&domain.Slide{}, 
+		&domain.ListeningHistory{}, 
+		&domain.Recommendation{},   
+	)
 
 	database.RunMigrations(app.DB)
 

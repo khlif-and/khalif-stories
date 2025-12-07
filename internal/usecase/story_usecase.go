@@ -84,10 +84,16 @@ func (u *StoryUC) Update(ctx context.Context, storyUUID string, title, desc, cat
 
 	oldThumbURL := story.ThumbnailURL
 
-	if title != "" { story.Title = title }
-	if desc != "" { story.Description = desc }
-	if status != "" { story.Status = status }
-	
+	if title != "" {
+		story.Title = title
+	}
+	if desc != "" {
+		story.Description = desc
+	}
+	if status != "" {
+		story.Status = status
+	}
+
 	if categoryUUID != "" {
 		if cat, _ := u.categoryRepo.GetByUUID(ctx, categoryUUID); cat != nil {
 			story.CategoryID = cat.ID
@@ -156,7 +162,9 @@ func (u *StoryUC) Delete(ctx context.Context, uuid string) error {
 
 func (u *StoryUC) AddSlide(ctx context.Context, storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*domain.Slide, error) {
 	story, err := u.repo.GetByUUID(ctx, storyUUID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	count, _ := u.repo.CountSlides(ctx, story.ID)
 	if count >= int64(u.cfg.SlideLimit) {
@@ -169,7 +177,7 @@ func (u *StoryUC) AddSlide(ctx context.Context, storyUUID string, content string
 	}
 
 	slide := &domain.Slide{
-		StoryID:  &story.ID, // FIX: Pakai Pointer
+		StoryID:  &story.ID,
 		Content:  content,
 		Sequence: sequence,
 		ImageURL: imageURL,
@@ -216,4 +224,9 @@ func (u *StoryUC) GetByUUID(ctx context.Context, uuid string) (*domain.Story, er
 
 func (u *StoryUC) Search(ctx context.Context, query string) ([]domain.Story, error) {
 	return u.repo.Search(ctx, query)
+}
+
+// --- [INI FUNGSI YANG KITA TAMBAHKAN] ---
+func (u *StoryUC) GetRecommendations(ctx context.Context, userID string) ([]domain.Recommendation, error) {
+	return u.repo.GetRecommendations(ctx, userID)
 }
