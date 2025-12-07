@@ -99,3 +99,18 @@ func (r *StoryRepo) CountSlides(ctx context.Context, storyID uint) (int64, error
 	err := r.db.WithContext(ctx).Model(&domain.Story{}).Select("slide_count").Where("id = ?", storyID).Scan(&count).Error
 	return count, err
 }
+
+func (r *StoryRepo) GetRecommendations(ctx context.Context, userID string) ([]domain.Recommendation, error) {
+	var recs []domain.Recommendation
+
+	// Menggunakan Preload untuk memuat data Story dan Category terkait
+	err := r.db.WithContext(ctx).
+		Preload("Story").
+		Preload("Story.Category").
+		Where("user_id = ?", userID).
+		Order("score DESC").
+		Limit(10).
+		Find(&recs).Error
+
+	return recs, err
+}

@@ -78,6 +78,7 @@ type StoryRepository interface {
 	GetByID(ctx context.Context, id uint) (*Story, error)
 	GetByUUID(ctx context.Context, uuid string) (*Story, error)
 	Update(ctx context.Context, s *Story) error
+	GetRecommendations(ctx context.Context, userID string) ([]Recommendation, error)
 	UpdateColor(ctx context.Context, id uint, color string) error
 	Delete(ctx context.Context, uuid string) error
 	CheckDuplicate(ctx context.Context, title, description string) (bool, error)
@@ -114,6 +115,7 @@ type StoryUseCase interface {
 	
 	// PERBAIKAN DISINI: Hapus tanda bintang (*)
 	Search(ctx context.Context, query string) ([]Story, error)
+	GetRecommendations(ctx context.Context, userID string) ([]Recommendation, error)
 	
 	Delete(ctx context.Context, uuid string) error
 	AddSlide(ctx context.Context, storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
@@ -133,4 +135,21 @@ type ChapterUseCase interface {
 	GetByUUID(ctx context.Context, uuid string) (*Chapter, error)
 	Delete(ctx context.Context, uuid string) error
 	AddSlide(ctx context.Context, chapterUUID string, content string, sequence int, imageFile multipart.File, imageHeader *multipart.FileHeader, soundFile multipart.File, soundHeader *multipart.FileHeader) (*Slide, error)
+}
+
+type ListeningHistory struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    string    `gorm:"index" json:"user_id"` // Siapa
+	StoryID   uint      `gorm:"index" json:"story_id"` // Dengar apa
+	Duration  int       `json:"duration"`             // Berapa detik
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+type Recommendation struct {
+    ID        uint      `gorm:"primaryKey" json:"id"`
+    UserID    string    `gorm:"index" json:"user_id"`
+    StoryID   uint      `gorm:"index" json:"story_id"`
+    Story     Story     `gorm:"foreignKey:StoryID" json:"story"` // Relasi ke Story
+    Score     float64   `json:"score"`
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
