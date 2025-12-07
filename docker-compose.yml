@@ -1,54 +1,27 @@
+version: '3.8'
+
 services:
   app:
     build: .
     container_name: khalif_api
-    restart: unless-stopped  # <-- UBAH KE INI (Biar gak auto-start kalau abis dimatiin)
+    restart: no
     ports:
       - "8082:8082"
     env_file:
       - .env
     environment:
-      - DATABASE_URL=host=db user=postgres password=postgres dbname=khalif_db port=5432 sslmode=disable
-      - REDIS_ADDR=redis:6379
-    depends_on:
-      - db
-      - redis
+      # PENTING:
+      # host diganti jadi 'khalif_db' (nama container di infra)
+      # port diganti jadi '5432' (port internal container)
+      - DATABASE_URL=postgres://postgres:postgres@khalif_db:5432/khalif_db?sslmode=disable
+      
+      # host diganti jadi 'khalif_redis'
+      - REDIS_ADDR=khalif_redis:6379
+    networks:
+      - khalif_net
 
-  ml_engine:
-    build: ../khalif-algorythm-py
-    container_name: khalif_ml
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=khalif_db
-    depends_on:
-      - db
-    restart: "no" # <-- TETAP INI (Karena dia cuma jalan sebentar lalu mati)
-
-  db:
-    image: postgres:15-alpine
-    container_name: khalif_db
-    restart: unless-stopped  # <-- UBAH KE INI
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: khalif_db
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    container_name: khalif_redis
-    restart: unless-stopped  # <-- UBAH KE INI
-    ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  postgres_data:
-  redis_data:
+# Gunakan network eksternal yang dibuat oleh khalif-infra
+networks:
+  khalif_net:
+    external: true
+    name: khalif_network
