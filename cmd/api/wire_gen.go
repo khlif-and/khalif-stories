@@ -34,6 +34,9 @@ func InitializeApp() (*App, error) {
 	chapterRepo := repository.NewChapterRepository(db)
 	chapterUC := usecase.NewChapterUseCase(configConfig, chapterRepo, storyRepo, azureUploader)
 	chapterHandler := handler.NewChapterHandler(chapterUC)
-	app := NewApp(db, client, categoryHandler, storyHandler, chapterHandler)
+	preferenceRepo := repository.NewPreferenceRepository(db)
+	preferenceUC := usecase.NewPreferenceUseCase(preferenceRepo, categoryRepo)
+	preferenceHandler := handler.NewPreferenceHandler(preferenceUC)
+	app := NewApp(db, client, categoryHandler, storyHandler, chapterHandler, preferenceHandler)
 	return app, nil
 }

@@ -33,20 +33,23 @@ import (
 // @in header
 // @name Authorization
 type App struct {
-	DB              *gorm.DB
-	RDB             *redis.Client
-	CategoryHandler *handler.CategoryHandler
-	StoryHandler    *handler.StoryHandler
-	ChapterHandler  *handler.ChapterHandler
+	DB                *gorm.DB
+	RDB               *redis.Client
+	CategoryHandler   *handler.CategoryHandler
+	StoryHandler      *handler.StoryHandler
+	ChapterHandler    *handler.ChapterHandler
+	PreferenceHandler *handler.PreferenceHandler // Ditambahkan
 }
 
-func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *handler.StoryHandler, chapH *handler.ChapterHandler) *App {
+// Update NewApp untuk menerima PreferenceHandler
+func NewApp(db *gorm.DB, rdb *redis.Client, ch *handler.CategoryHandler, sh *handler.StoryHandler, chapH *handler.ChapterHandler, ph *handler.PreferenceHandler) *App {
 	return &App{
-		DB:              db,
-		RDB:             rdb,
-		CategoryHandler: ch,
-		StoryHandler:    sh,
-		ChapterHandler:  chapH,
+		DB:                db,
+		RDB:               rdb,
+		CategoryHandler:   ch,
+		StoryHandler:      sh,
+		ChapterHandler:    chapH,
+		PreferenceHandler: ph, // Ditambahkan
 	}
 }
 
@@ -67,14 +70,17 @@ func main() {
 		logger.Info("Database reset successfully")
 	}
 
-
+	// Menambahkan tabel preference ke AutoMigrate
 	app.DB.AutoMigrate(
-		&domain.Category{}, 
-		&domain.Story{}, 
-		&domain.Chapter{}, 
-		&domain.Slide{}, 
-		&domain.ListeningHistory{}, 
-		&domain.Recommendation{},   
+		&domain.Category{},
+		&domain.Story{},
+		&domain.Chapter{},
+		&domain.Slide{},
+		&domain.ListeningHistory{},
+		&domain.Recommendation{},
+		&domain.UserChoiceStory{},  // Baru
+		&domain.UserChoiceDakwah{}, // Baru
+		&domain.UserChoiceHadist{}, // Baru
 	)
 
 	database.RunMigrations(app.DB)
