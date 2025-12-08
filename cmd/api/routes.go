@@ -1,4 +1,5 @@
 package main
+
 import (
 	"time"
 
@@ -11,13 +12,17 @@ import (
 	"khalif-stories/pkg/middleware"
 
 )
+
 func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
 	r.Use(middleware.Logger())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	
 	limiter := middleware.RateLimitConfig{Limit: 300, Window: time.Minute}
 	r.Use(middleware.RateLimit(app.RDB, limiter))
+	
 	auth := middleware.AuthMiddleware(cfg.JWTSecret)
 	admin := middleware.OnlyAdmin()
+
 	r.GET("/api/categories", app.CategoryHandler.GetAll)
 	r.GET("/api/categories/:id", app.CategoryHandler.GetOne)
 	r.GET("/api/search/categories", app.CategoryHandler.Search)
@@ -25,11 +30,14 @@ func SetupRoutes(r *gin.Engine, app *App, cfg *config.Config) {
 	r.GET("/api/stories/:uuid", app.StoryHandler.GetOne)
 	r.GET("/api/search/stories", app.StoryHandler.Search)
 	r.GET("/api/chapters/:uuid", app.ChapterHandler.GetOne)
+
 	protected := r.Group("/api")
-	protected.Use(auth) 
+	protected.Use(auth)
 	{
 		protected.GET("/stories/recommendations", app.StoryHandler.GetRecommendations)
+		protected.POST("/preferences", app.PreferenceHandler.Save)
 	}
+
 	adm := r.Group("/api/admin")
 	adm.Use(auth, admin)
 	{

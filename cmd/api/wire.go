@@ -11,7 +11,6 @@ import (
 	"khalif-stories/internal/handler"
 	"khalif-stories/internal/repository"
 	"khalif-stories/internal/usecase"
-	// HAPUS BARIS INI: "khalif-stories/pkg/utils" 
 
 )
 
@@ -22,32 +21,31 @@ func InitializeApp() (*App, error) {
 		ProvideRedis,
 		ProvideAzureUploader,
 
-		// Repository (Provider)
 		repository.NewCategoryRepository,
 		repository.NewStoryRepository,
 		repository.NewChapterRepository,
 		repository.NewCacheRepository,
+		repository.NewPreferenceRepository,
 
-		// Binding Repository Interface -> Implementation
 		wire.Bind(new(domain.CategoryRepository), new(*repository.CategoryRepo)),
 		wire.Bind(new(domain.StoryRepository), new(*repository.StoryRepo)),
 		wire.Bind(new(domain.ChapterRepository), new(*repository.ChapterRepo)),
-		
 		wire.Bind(new(domain.RedisRepository), new(*repository.RedisRepo)),
+		wire.Bind(new(domain.PreferenceRepository), new(*repository.PreferenceRepo)),
 
-		// UseCase (Provider)
 		usecase.NewCategoryUseCase,
 		usecase.NewStoryUseCase,
 		usecase.NewChapterUseCase,
+		usecase.NewPreferenceUseCase,
 
-		// Binding Interface UseCase -> Implementation Struct
 		wire.Bind(new(domain.CategoryUseCase), new(*usecase.CategoryUC)),
 		wire.Bind(new(domain.ChapterUseCase), new(*usecase.ChapterUC)),
+		wire.Bind(new(domain.PreferenceUseCase), new(*usecase.PreferenceUC)),
 
-		// Handler
 		handler.NewCategoryHandler,
 		handler.NewStoryHandler,
 		handler.NewChapterHandler,
+		handler.NewPreferenceHandler,
 
 		NewApp,
 	)

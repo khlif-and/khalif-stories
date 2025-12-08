@@ -28,10 +28,8 @@ type Story struct {
 	CategoryID    uint      `gorm:"index" json:"category_id"`
 	Category      Category  `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	UserID        string    `gorm:"index" json:"user_id"`
-	
 	Slides        []Slide   `gorm:"foreignKey:StoryID" json:"slides,omitempty"`
 	Chapters      []Chapter `gorm:"foreignKey:StoryID" json:"chapters,omitempty"`
-	
 	SlideCount    int       `gorm:"default:0" json:"slide_count"`
 	Status        string    `gorm:"index;default:'Draft'" json:"status"`
 	CreatedAt     time.Time `gorm:"index;autoCreateTime" json:"created_at"`
@@ -51,13 +49,28 @@ type Chapter struct {
 type Slide struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	StoryID   *uint     `gorm:"index" json:"story_id,omitempty"`
-	ChapterID *uint     `gorm:"index" json:"chapter_id,omitempty"` 
+	ChapterID *uint     `gorm:"index" json:"chapter_id,omitempty"`
 	ImageURL  string    `json:"image_url"`
 	SoundURL  string    `json:"sound_url"`
 	Content   string    `json:"content"`
 	Sequence  int       `gorm:"index" json:"sequence"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+type UserChoiceStory struct {
+	UserID     string `gorm:"primaryKey" json:"user_id"`
+	CategoryID uint   `gorm:"primaryKey" json:"category_id"`
+}
+
+type UserChoiceDakwah struct {
+	UserID     string `gorm:"primaryKey" json:"user_id"`
+	CategoryID uint   `gorm:"primaryKey" json:"category_id"`
+}
+
+type UserChoiceHadist struct {
+	UserID     string `gorm:"primaryKey" json:"user_id"`
+	CategoryID uint   `gorm:"primaryKey" json:"category_id"`
 }
 
 type CategoryRepository interface {
@@ -86,6 +99,17 @@ type StoryRepository interface {
 	CountSlides(ctx context.Context, storyID uint) (int64, error)
 }
 
+type PreferenceRepository interface {
+	SaveStoryChoices(ctx context.Context, choices []UserChoiceStory) error
+	SaveDakwahChoices(ctx context.Context, choices []UserChoiceDakwah) error
+	SaveHadistChoices(ctx context.Context, choices []UserChoiceHadist) error
+	ClearChoices(ctx context.Context, userID string) error
+}
+
+type PreferenceUseCase interface {
+	SavePreferences(ctx context.Context, userID string, storyCatIDs, dakwahCatIDs, hadistCatIDs []string) error
+}
+
 type RedisRepository interface {
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, error)
@@ -112,11 +136,8 @@ type StoryUseCase interface {
 	Update(ctx context.Context, storyUUID string, title, desc, categoryUUID, status string, file multipart.File, header *multipart.FileHeader) (*Story, error)
 	GetAll(ctx context.Context, page, limit int, sort string) ([]Story, error)
 	GetByUUID(ctx context.Context, uuid string) (*Story, error)
-	
-	// PERBAIKAN DISINI: Hapus tanda bintang (*)
 	Search(ctx context.Context, query string) ([]Story, error)
 	GetRecommendations(ctx context.Context, userID string) ([]Recommendation, error)
-	
 	Delete(ctx context.Context, uuid string) error
 	AddSlide(ctx context.Context, storyUUID string, content string, sequence int, file multipart.File, header *multipart.FileHeader) (*Slide, error)
 }
@@ -139,17 +160,17 @@ type ChapterUseCase interface {
 
 type ListeningHistory struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    string    `gorm:"index" json:"user_id"` // Siapa
-	StoryID   uint      `gorm:"index" json:"story_id"` // Dengar apa
-	Duration  int       `json:"duration"`             // Berapa detik
+	UserID    string    `gorm:"index" json:"user_id"`
+	StoryID   uint      `gorm:"index" json:"story_id"`
+	Duration  int       `json:"duration"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 type Recommendation struct {
-    ID        uint      `gorm:"primaryKey" json:"id"`
-    UserID    string    `gorm:"index" json:"user_id"`
-    StoryID   uint      `gorm:"index" json:"story_id"`
-    Story     Story     `gorm:"foreignKey:StoryID" json:"story"` // Relasi ke Story
-    Score     float64   `json:"score"`
-    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    string    `gorm:"index" json:"user_id"`
+	StoryID   uint      `gorm:"index" json:"story_id"`
+	Story     Story     `gorm:"foreignKey:StoryID" json:"story"`
+	Score     float64   `json:"score"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
